@@ -6,17 +6,22 @@ import datetime
 import sys
 import os
 
+import alpaca_trade_api
+
 import historical_stock_data_manager
 import strategies
 
+
 stock_data = {}
 stock_files_directory = 'stocks/'
+trade_api = alpaca_trade_api.REST()
+account = trade_api.get_account()
 
 
 class StockData:
     def __init__(self):
         self.daily_stock_data = ''
-        self.strategies = {}
+        self.strategies = False
         self.strategy_orders = []
 
 
@@ -89,6 +94,21 @@ def run_live(strategy):
         print(f'No strategy defined for live run.')
 
 
+def order(symbol, risk, reward):
+    print(f'Ticker: {symbol} - Risk: {risk} - Reward: {reward}')
+    '''
+    trade_api.submit_order(symbol=symbol,
+                           side='buy',
+                           type='limit',
+                           qty=math.floor((float(account.cash) * .01) / stock_list[symbol].daily_stock_data.close.iloc[-1]),
+                           time_in_force='gtc',
+                           order_class='bracket',
+                           take_profit=dict(limit_price=reward),
+                           stop_loss=dict(stop_price=risk,
+                                          limit_price=str(round(risk * .99, 2))))
+    '''
+
+
 def main():
     print(f'{datetime.datetime.now()} :: Starting')
     arguments = set_parser()
@@ -112,9 +132,10 @@ def main():
         run_live(arguments.strategy)
         print(f'{datetime.datetime.now()} :: Strategies filtered down to {len(stock_data)} stocks.')
         for each_stock in stock_data:
-            if stock_data[each_stock].strategies['stochastic_supertrend']:
-                print(each_stock)
-                print(stock_data[each_stock].strategy_orders)
+            if stock_data[each_stock].strategies:
+                order(each_stock,
+                      stock_data[each_stock].strategy_orders[1],
+                      stock_data[each_stock].strategy_orders[3])
     else:
         print(f'No running state defined.')
 

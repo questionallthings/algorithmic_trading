@@ -78,11 +78,10 @@ def stochastic_supertrend(stock_data, backtest=False):
                                                   indicator_executor.map(stochastic_supertrend_concurrent,
                                                                          stock_data.items(),
                                                                          repeat(backtest))):
-            stock_data[each_stock].strategies['stochastic_supertrend'], \
-            stock_data[each_stock].strategy_orders = stock_list_results
+            stock_data[each_stock].strategies, stock_data[each_stock].strategy_orders = stock_list_results
     if not backtest:
         for each_stock, value in list(stock_data.items()):
-            if not stock_data[each_stock].strategies['stochastic_supertrend']:
+            if not stock_data[each_stock].strategies:
                 del stock_data[each_stock]
 
 
