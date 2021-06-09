@@ -37,6 +37,7 @@ def stochastic_supertrend_concurrent(stock, bt=False):
                 (stock[1].daily_stock_data.STOCHRSIk_14_14_3_3.iloc[-i - 1] >
                  stock[1].daily_stock_data.STOCHRSId_14_14_3_3.iloc[-i - 1]):
             cross_downs.append(-i)
+    stock[1].daily_stock_data.ta.atr(append=True)
     for i in range(1, len(stock[1].daily_stock_data)):
         if -i in cross_ups and not cross_up_found:
             cross_up_found = True
@@ -47,20 +48,28 @@ def stochastic_supertrend_concurrent(stock, bt=False):
         if cross_up_found and cross_down_found:
             cross_down_found = False
             cross_up_found = False
-            strategy_risk = stock[1].daily_stock_data.high.iloc[super_stochastic_risk_low_end]
+            strategy_risk = round(stock[1].daily_stock_data.ATRr_14.iloc[super_stochastic_risk_low_end], 4)
             for x in range(super_stochastic_risk_low_begin, super_stochastic_risk_low_end):
-                if stock[1].daily_stock_data.low.iloc[x] < strategy_risk:
-                    strategy_risk = stock[1].daily_stock_data.low.iloc[x]
-                    strategy_reward = stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] + \
+                if (stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] >
+                        stock[1].daily_stock_data.low.iloc[x]) and \
                         ((stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] -
-                          stock[1].daily_stock_data.low.iloc[x]) * 1.5)
+                          stock[1].daily_stock_data.low.iloc[x]) < strategy_risk):
+                    strategy_risk = stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] - \
+                                    stock[1].daily_stock_data.low.iloc[x]
+            strategy_reward = strategy_risk * 1.5
             strategy_orders.append([stock[1].daily_stock_data.date.iloc[super_stochastic_risk_low_end],
-                                    round(strategy_risk, 2),
-                                    round(strategy_reward, 2)])
+                                    round(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] -
+                                          strategy_risk, 2),
+                                    round(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end], 2),
+                                    round(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] +
+                                          strategy_reward, 2)])
             if not bt:
                 return True, [stock[1].daily_stock_data.date.iloc[super_stochastic_risk_low_end],
-                              round(strategy_risk, 2),
-                              round(strategy_reward, 2)]
+                              round(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] -
+                                    strategy_risk, 2),
+                              round(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end], 2),
+                              round(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] +
+                                    strategy_reward, 2)]
 
     return True, strategy_orders
 

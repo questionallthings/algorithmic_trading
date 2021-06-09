@@ -113,6 +113,7 @@ def main():
         print(f'{datetime.datetime.now()} :: Strategies filtered down to {len(stock_data)} stocks.')
         for each_stock in stock_data:
             if stock_data[each_stock].strategies['stochastic_supertrend']:
+                print(each_stock)
                 print(stock_data[each_stock].strategy_orders)
     else:
         print(f'No running state defined.')
