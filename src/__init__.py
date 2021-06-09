@@ -101,6 +101,7 @@ def order(symbol, risk, price, reward):
         trade_api.submit_order(symbol=symbol,
                                side='buy',
                                type='limit',
+                               limit_price=price,
                                qty=math.floor((float(account.cash) * .01) / price),
                                time_in_force='gtc',
                                order_class='bracket',

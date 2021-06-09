@@ -45,7 +45,8 @@ def stochastic_supertrend_concurrent(stock, bt=False):
         elif -i in cross_downs and not cross_down_found:
             cross_down_found = True
             super_stochastic_risk_low_begin = -i - 1
-        if cross_up_found and cross_down_found:
+        if cross_up_found and cross_down_found and \
+                (stock[1].daily_stock_data['SUPERTd_7_3.0'].iloc[super_stochastic_risk_low_end] > 0):
             cross_down_found = False
             cross_up_found = False
             strategy_risk = stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end]
