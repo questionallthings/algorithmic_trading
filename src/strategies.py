@@ -48,14 +48,12 @@ def stochastic_supertrend_concurrent(stock, bt=False):
         if cross_up_found and cross_down_found:
             cross_down_found = False
             cross_up_found = False
-            strategy_risk = round(stock[1].daily_stock_data.ATRr_14.iloc[super_stochastic_risk_low_end], 4)
+            strategy_risk = stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end]
             for x in range(super_stochastic_risk_low_begin, super_stochastic_risk_low_end):
-                if (stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] >
-                        stock[1].daily_stock_data.low.iloc[x]) and \
-                        ((stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] -
-                          stock[1].daily_stock_data.low.iloc[x]) < strategy_risk):
-                    strategy_risk = stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] - \
-                                    stock[1].daily_stock_data.low.iloc[x]
+                if stock[1].daily_stock_data.low.iloc[x] < strategy_risk:
+                    strategy_risk = stock[1].daily_stock_data.low.iloc[x]
+            strategy_risk = min(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] - strategy_risk,
+                                round(stock[1].daily_stock_data.ATRr_14.iloc[super_stochastic_risk_low_end], 4))
             strategy_reward = strategy_risk * 1.5
             strategy_orders.append([stock[1].daily_stock_data.date.iloc[super_stochastic_risk_low_end],
                                     round(stock[1].daily_stock_data.close.iloc[super_stochastic_risk_low_end] -
