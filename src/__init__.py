@@ -2,15 +2,16 @@
 
 # Imports
 from argparse import ArgumentParser, RawTextHelpFormatter
-import json
+import datetime
+import sys
 
-# Command Line Arguments to Introduce Later
-strategy_options = {'ss': 'stochastic_supertrend',
-                    'tet': 'three_eight_trap',
-                    'ec': 'ema_crossover'}
+import historical_stock_data_manager
 
 
 def set_parser():
+    strategy_options = {'ss': 'stochastic_supertrend',
+                        'tet': 'three_eight_trap',
+                        'ec': 'ema_crossover'}
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
     subparsers = parser.add_subparsers()
     run_parser = subparsers.add_parser('run', help='run -h')
@@ -44,8 +45,24 @@ def set_parser():
 
 
 def main():
+    print(f'{datetime.datetime.now()} :: Starting')
     arguments = set_parser()
+    if arguments.run == 'backtest':
+        print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
+    elif arguments.run == 'update':
+        print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
+        print(f'{datetime.datetime.now()} :: Updating data files.')
+        historical_stock_data_manager.update_data()
+        print(f'Program took {datetime.datetime.now() - start_time} to run.')
+        sys.exit()
+    elif arguments.run == 'live':
+        print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
+    else:
+        print(f'No running state defined.')
+    print(arguments)
 
 
 if __name__ == "__main__":
+    start_time = datetime.datetime.now()
     main()
+    print(f'Program took {datetime.datetime.now() - start_time} to complete.')
