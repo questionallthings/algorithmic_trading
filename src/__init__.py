@@ -7,6 +7,7 @@ import sys
 import os
 
 import historical_stock_data_manager
+import strategies
 
 stock_data = {}
 stock_files_directory = 'stocks/'
@@ -15,6 +16,8 @@ stock_files_directory = 'stocks/'
 class StockData:
     def __init__(self):
         self.daily_stock_data = ''
+        self.strategies = {}
+        self.strategy_orders = []
 
 
 def set_parser():
@@ -58,24 +61,44 @@ def filter_stock_list(filter_options):
     historical_stock_data_manager.import_data(stock_data)
     print(f'{datetime.datetime.now()} :: Imported {len(stock_data)} files.')
     for key, value in list(stock_data.items()):
-        if (value.daily_stock_data.Volume.iloc[-31:-1].min() < filter_options['avg_30_volume']) or \
-                (value.daily_stock_data.Close.iloc[-1] > filter_options['close_max']) or \
-                (value.daily_stock_data.Close.iloc[-1] < filter_options['close_min']):
+        if (value.daily_stock_data.Volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
+                (value.daily_stock_data.Close.iloc[-1] > filter_options.close_max) or \
+                (value.daily_stock_data.Close.iloc[-1] < filter_options.close_min):
             del stock_data[key]
+
+
+def run_backtest(strategy):
+    if strategy == 'ss':
+        strategies.stochastic_supertrend(stock_data, backtest=True)
+    elif strategy == 'tet':
+        strategies.three_eight_trap(stock_data, backtest=True)
+    elif strategy == 'ec':
+        strategies.ema_crossover(stock_data, backtest=True)
+    else:
+        print(f'No strategy defined for backtest run.')
+
+
+def run_live(strategy):
+    if strategy == 'ss':
+        strategies.stochastic_supertrend(stock_data)
+    elif strategy == 'tet':
+        strategies.three_eight_trap(stock_data)
+    elif strategy == 'ec':
+        strategies.ema_crossover(stock_data)
+    else:
+        print(f'No strategy defined for live run.')
 
 
 def main():
     print(f'{datetime.datetime.now()} :: Starting')
     arguments = set_parser()
-    filter_args = {'close_min': arguments.close_min,
-                   'close_max': arguments.close_max,
-                   'avg_30_volume': arguments.avg_30_volume}
     for each_stock in os.listdir(stock_files_directory):
         stock_data[each_stock.split('_')[0]] = StockData()
     if arguments.run == 'backtest':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
-        filter_stock_list(filter_args)
+        filter_stock_list(arguments)
         print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
+        run_backtest(arguments.strategy)
     elif arguments.run == 'update':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
         print(f'{datetime.datetime.now()} :: Updating data files.')
@@ -84,11 +107,15 @@ def main():
         sys.exit()
     elif arguments.run == 'live':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
-        filter_stock_list(filter_args)
+        filter_stock_list(arguments)
         print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
+        run_live(arguments.strategy)
+        print(f'{datetime.datetime.now()} :: Strategies filtered down to {len(stock_data)} stocks.')
+        for each_stock in stock_data:
+            if stock_data[each_stock].strategies['stochastic_supertrend']:
+                print(stock_data[each_stock].strategy_orders)
     else:
         print(f'No running state defined.')
-    print(arguments)
 
 
 if __name__ == "__main__":
