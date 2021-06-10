@@ -96,3 +96,56 @@ def ema_crossover(stock_data, backtest=False):
     stocks_meeting_strategy = []
 
     return stocks_meeting_strategy
+
+
+def engulfing_pattern_concurrent(stock, bt=False):
+    strategy_orders = []
+    strategy_risk = 0
+    strategy_reward = 0
+    strategy_found = False
+    stock[1].daily_stock_data.ta.ema(length=200, append=True)
+    if not bt and (stock[1].daily_stock_data.EMA_200.iloc[-1] >= stock[1].daily_stock_data.close.iloc[-1]):
+        return False, strategy_orders
+    stock[1].daily_stock_data.ta.atr(append=True)
+    if not bt and not (stock[1].daily_stock_data.close.iloc[-1] >
+                       stock[1].daily_stock_data.open.iloc[-2] >
+                       stock[1].daily_stock_data.close.iloc[-2] >
+                       stock[1].daily_stock_data.open.iloc[-1]):
+        return False, strategy_orders
+    for i in range(1, len(stock[1].daily_stock_data)):
+        if (stock[1].daily_stock_data.close.iloc[-i] >
+                stock[1].daily_stock_data.open.iloc[-i - 1] >
+                stock[1].daily_stock_data.close.iloc[-i - 1] >
+                stock[1].daily_stock_data.open.iloc[-i]):
+            strategy_risk = min((stock[1].daily_stock_data.close.iloc[-i] -
+                                 stock[1].daily_stock_data.open.iloc[-i]),
+                                round(stock[1].daily_stock_data.ATRr_14.iloc[-i], 4))
+            strategy_reward = strategy_risk * 1.5
+            strategy_orders.append([stock[1].daily_stock_data.date.iloc[-i],
+                                    round(stock[1].daily_stock_data.close.iloc[-i] -
+                                          strategy_risk, 2),
+                                    round(stock[1].daily_stock_data.close.iloc[-i], 2),
+                                    round(stock[1].daily_stock_data.close.iloc[-i] +
+                                          strategy_reward, 2)])
+            if not bt:
+                return True, [stock[1].daily_stock_data.date.iloc[-i],
+                              round(stock[1].daily_stock_data.close.iloc[-i] -
+                                    strategy_risk, 2),
+                              round(stock[1].daily_stock_data.close.iloc[-i], 2),
+                              round(stock[1].daily_stock_data.close.iloc[-i] +
+                                    strategy_reward, 2)]
+
+    return True, strategy_orders
+
+
+def engulfing_pattern(stock_data, backtest=False):
+    with futures.ProcessPoolExecutor(max_workers=2) as indicator_executor:
+        for each_stock, stock_list_results in zip(stock_data,
+                                                  indicator_executor.map(engulfing_pattern_concurrent,
+                                                                         stock_data.items(),
+                                                                         repeat(backtest))):
+            stock_data[each_stock].strategies, stock_data[each_stock].strategy_orders = stock_list_results
+    if not backtest:
+        for each_stock, value in list(stock_data.items()):
+            if not stock_data[each_stock].strategies:
+                del stock_data[each_stock]

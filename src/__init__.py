@@ -29,7 +29,8 @@ class StockData:
 def set_parser():
     strategy_options = {'ss': 'stochastic_supertrend',
                         'tet': 'three_eight_trap',
-                        'ec': 'ema_crossover'}
+                        'ec': 'ema_crossover',
+                        'ep': 'engulfing_pattern'}
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
     subparsers = parser.add_subparsers()
     run_parser = subparsers.add_parser('run', help='run -h')
@@ -43,7 +44,7 @@ def set_parser():
     exclusive_group.add_argument('-l', '--live',
                                  action='store_const', dest='run', const='live',
                                  help='This will run the program live with no back testing or update.')
-    parser.add_argument('-s', '--strategy', choices=strategy_options, default='ss', nargs='*',
+    parser.add_argument('-s', '--strategy', choices=strategy_options, default='ep', nargs='*',
                         help='\n'.join(f'{key}: {value}' for key, value in strategy_options.items()),
                         metavar='S')
     parser.add_argument('-v', '--version', action='version', version='Algorithmic Trading 0.0.1')
@@ -80,6 +81,8 @@ def run_backtest(strategy):
         strategies.three_eight_trap(stock_data, backtest=True)
     elif strategy == 'ec':
         strategies.ema_crossover(stock_data, backtest=True)
+    elif strategy == 'ep':
+        strategies.engulfing_pattern(stock_data, backtest=True)
     else:
         print(f'No strategy defined for backtest run.')
 
@@ -91,11 +94,15 @@ def run_live(strategy):
         strategies.three_eight_trap(stock_data)
     elif strategy == 'ec':
         strategies.ema_crossover(stock_data)
+    elif strategy == 'ep':
+        strategies.engulfing_pattern(stock_data)
     else:
         print(f'No strategy defined for live run.')
 
 
 def order(symbol, risk, price, reward):
+    print(f'Stock - {symbol} :: Risk - {risk} :: Price - {price} :: Reward - {reward}')
+    '''
     test = trade_api.get_last_trade(symbol=symbol)
     if price > test.price > risk:
         trade_api.submit_order(symbol=symbol,
@@ -108,6 +115,7 @@ def order(symbol, risk, price, reward):
                                take_profit=dict(limit_price=reward),
                                stop_loss=dict(stop_price=risk,
                                               limit_price=str(round(risk * .99, 2))))
+    '''
 
 
 def main():
