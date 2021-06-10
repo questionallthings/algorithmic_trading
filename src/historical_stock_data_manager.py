@@ -1,5 +1,5 @@
 from concurrent import futures
-import yfinance as yf
+import yahooquery as yq
 import pandas as pd
 
 stock_files_directory = 'stocks/'
@@ -19,8 +19,8 @@ def import_data(stock_data):
 
 
 def update_stock_data(stock):
-    data = yf.Ticker(stock)
-    daily_stock_data = data.history(period='max').round(decimals=5)
+    yahoo_query_data = yq.Ticker(stock)
+    daily_stock_data = yahoo_query_data.history(period='max').round(5)
     if len(daily_stock_data) > 730:
         daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_daily_stock_data.txt')
 
@@ -32,3 +32,12 @@ def update_data():
             update_list.append(each_ticker.strip('\n'))
     with futures.ThreadPoolExecutor() as update_executor:
         update_executor.map(update_stock_data, update_list)
+
+
+def update_stock_list_data():
+    pass
+
+
+def update_stock_list():
+    pass
+

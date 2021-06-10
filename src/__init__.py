@@ -68,9 +68,9 @@ def filter_stock_list(filter_options):
     historical_stock_data_manager.import_data(stock_data)
     print(f'{datetime.datetime.now()} :: Imported {len(stock_data)} files.')
     for key, value in list(stock_data.items()):
-        if (value.daily_stock_data.Volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
-                (value.daily_stock_data.Close.iloc[-1] > filter_options.close_max) or \
-                (value.daily_stock_data.Close.iloc[-1] < filter_options.close_min):
+        if (value.daily_stock_data.volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
+                (value.daily_stock_data.close.iloc[-1] > filter_options.close_max) or \
+                (value.daily_stock_data.close.iloc[-1] < filter_options.close_min):
             del stock_data[key]
 
 
@@ -101,21 +101,19 @@ def run_live(strategy):
 
 
 def order(symbol, risk, price, reward):
-    print(f'Stock - {symbol} :: Risk - {risk} :: Price - {price} :: Reward - {reward}')
-    '''
     test = trade_api.get_last_trade(symbol=symbol)
     if price > test.price > risk:
+        print(f'Stock - {symbol} :: Risk - {risk} :: Price - {price} :: Last Trade - {test.price}:: Reward - {reward}')
         trade_api.submit_order(symbol=symbol,
                                side='buy',
-                               type='limit',
-                               limit_price=price,
+                               type='stop',
+                               stop_price=price,
                                qty=math.floor((float(account.cash) * .01) / price),
                                time_in_force='gtc',
                                order_class='bracket',
                                take_profit=dict(limit_price=reward),
                                stop_loss=dict(stop_price=risk,
                                               limit_price=str(round(risk * .99, 2))))
-    '''
 
 
 def main():
@@ -130,6 +128,8 @@ def main():
         run_backtest(arguments.strategy)
     elif arguments.run == 'update':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
+        print(f'{datetime.datetime.now()} :: Updating stock list file.')
+        historical_stock_data_manager.update_stock_list()
         print(f'{datetime.datetime.now()} :: Updating data files.')
         historical_stock_data_manager.update_data()
         print(f'Program took {datetime.datetime.now() - start_time} to run.')
@@ -139,7 +139,8 @@ def main():
         filter_stock_list(arguments)
         print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
         run_live(arguments.strategy)
-        print(f'{datetime.datetime.now()} :: Strategies filtered down to {len(stock_data)} stocks.')
+        print(f'{datetime.datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
+              f'{len(stock_data)} stocks.')
         for each_stock in stock_data:
             if stock_data[each_stock].strategies:
                 order(each_stock,
