@@ -131,3 +131,4 @@ dmypy.json
 # Excess documents not needed for package
 /src/stocks/
 /src/backtest_results/
+/src/stock_list.txt
