@@ -6,6 +6,7 @@ import datetime
 import sys
 import os
 import math
+import json
 
 import alpaca_trade_api
 import pandas as pd
@@ -16,6 +17,7 @@ import strategies
 
 stock_data = {}
 stock_files_directory = 'stocks/'
+stock_list_file = 'stock_list.txt'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
 
@@ -61,20 +63,24 @@ def set_parser():
                                help='Maximum current closing value.')
     filter_parser.add_argument('-avg_30', dest='avg_30_volume', type=int,
                                help='Average volume over 30 days.')
-    filter_parser.add_argument('-quote_type', dest='quote_type', type=str, default='EQUITY',
+    filter_parser.add_argument('-quote_type', dest='quote_type', type=str,
                                help='What type of stock to filter for.')
     parser.set_defaults(run='live',
-                        close_min=1,
-                        close_max=5,
-                        avg_30_volume=1000000)
+                        close_min=5,
+                        close_max=20,
+                        avg_30_volume=1000000,
+                        quote_type='EQUITY')
 
     return parser.parse_args()
 
 
 def filter_stock_list(filter_options):
     print(f'{datetime.datetime.now()} :: Importing stock data files.')
-    historical_stock_data_manager.import_data(stock_data, filter_options.quote_type)
+    historical_stock_data_manager.import_data(stock_data)
     print(f'{datetime.datetime.now()} :: Imported {len(stock_data)} files.')
+    with open(stock_list_file) as file:
+        ticker_data = json.load(file)
+
     for key, value in list(stock_data.items()):
         if (value.daily_stock_data.volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
                 (value.daily_stock_data.close.iloc[-1] > filter_options.close_max) or \
@@ -112,16 +118,16 @@ def order(symbol, risk, price, reward):
     test = trade_api.get_last_trade(symbol=symbol)
     if price > test.price > risk:
         print(f'Stock - {symbol} :: Risk - {risk} :: Price - {price} :: Last Trade - {test.price}:: Reward - {reward}')
-        #trade_api.submit_order(symbol=symbol,
-        #                       side='buy',
-        #                       type='stop',
-        #                       stop_price=price,
-        #                       qty=math.floor((float(account.cash) * .01) / price),
-        #                       time_in_force='day',
-        #                       order_class='bracket',
-        #                       take_profit=dict(limit_price=reward),
-        #                       stop_loss=dict(stop_price=risk,
-        #                                      limit_price=str(round(risk * .99, 2))))
+        trade_api.submit_order(symbol=symbol,
+                               side='buy',
+                               type='stop',
+                               stop_price=price,
+                               qty=math.floor((float(account.cash) * .01) / price),
+                               time_in_force='day',
+                               order_class='bracket',
+                               take_profit=dict(limit_price=reward),
+                               stop_loss=dict(stop_price=risk,
+                                              limit_price=str(round(risk * .99, 2))))
 
 
 def main():
@@ -129,6 +135,7 @@ def main():
     arguments = set_parser()
     for each_stock in os.listdir(stock_files_directory):
         stock_data[each_stock.split('_')[0]] = StockData()
+    print(f'{datetime.datetime.now()} :: Using the following arguments: {arguments}.')
     if arguments.run == 'backtest':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
         filter_stock_list(arguments)
@@ -136,9 +143,7 @@ def main():
         run_backtest(arguments.strategy)
     elif arguments.run == 'update':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
-        print(f'{datetime.datetime.now()} :: Updating stock list file.')
-        historical_stock_data_manager.update_stock_list()
-        print(f'{datetime.datetime.now()} :: Updating data files.')
+        historical_stock_data_manager.update_stock_list(trade_api.list_assets())
         historical_stock_data_manager.update_data()
         print(f'Program took {datetime.datetime.now() - start_time} to run.')
         sys.exit()
