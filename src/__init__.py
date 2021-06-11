@@ -137,17 +137,17 @@ def main():
     for each_stock in os.listdir(stock_files_directory):
         stock_data[each_stock.split('_')[0]] = StockData()
     print(f'{datetime.datetime.now()} :: Using the following arguments: {arguments}.')
-    if arguments.run == 'backtest':
-        print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
-        filter_stock_list(arguments)
-        print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
-        run_backtest(arguments.strategy)
-    elif arguments.run == 'update':
+    if arguments.run == 'update':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
         historical_stock_data_manager.update_stock_list(trade_api.list_assets())
         historical_stock_data_manager.update_data()
         print(f'Program took {datetime.datetime.now() - start_time} to run.')
         sys.exit()
+    elif arguments.run == 'backtest':
+        print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
+        filter_stock_list(arguments)
+        print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
+        run_backtest(arguments.strategy)
     elif arguments.run == 'live':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
         filter_stock_list(arguments)
