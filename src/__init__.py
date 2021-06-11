@@ -17,6 +17,7 @@ import strategies
 
 stock_data = {}
 stock_files_directory = 'stocks/'
+backtest_results_directory = 'backtest_results/'
 stock_list_file = 'stock_list.txt'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()

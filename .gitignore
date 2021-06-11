@@ -129,4 +129,5 @@ dmypy.json
 .pyre/
 
 # Excess documents not needed for package
-src/stocks
+/src/stocks/
+/src/backtest_results/
