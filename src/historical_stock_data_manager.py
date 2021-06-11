@@ -9,7 +9,7 @@ stock_list_file = 'stock_list.txt'
 
 
 def import_stock_data(stock_name):
-    print(f'{datetime.datetime.now()} :: Updating {stock_name} historical stock data.')
+    print(f'{datetime.datetime.now()} :: Importing {stock_name} historical stock data.')
     dataframe_import = pd.read_csv(filepath_or_buffer=f'{stock_files_directory}{stock_name}_daily_stock_data.txt',
                                    sep=',')
     return dataframe_import
@@ -67,7 +67,7 @@ def update_stock_list(api):
     with open(stock_list_file, 'w') as file:
         for each_ticker in yq_stock_data_results:
             for each_value in each_ticker.values():
-                if 'exchange' in each_value:
+                if ('exchange' in each_value) and (each_value['exchange'] is not None):
                     new_stock_data.append(each_value)
         print(f'{datetime.datetime.now()} :: Writing found finance data for {len(new_stock_data)} assets.')
         file.writelines(json.dumps(new_stock_data))
