@@ -8,6 +8,7 @@ import os
 import math
 
 import alpaca_trade_api
+import pandas as pd
 
 import historical_stock_data_manager
 import strategies
@@ -17,6 +18,11 @@ stock_data = {}
 stock_files_directory = 'stocks/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
+
+pd.set_option('max_columns', 999)
+pd.set_option('max_colwidth', 999)
+pd.set_option('max_rows', 999)
+pd.set_option('display.expand_frame_repr', False)
 
 
 class StockData:
@@ -44,7 +50,7 @@ def set_parser():
     exclusive_group.add_argument('-l', '--live',
                                  action='store_const', dest='run', const='live',
                                  help='This will run the program live with no back testing or update.')
-    parser.add_argument('-s', '--strategy', choices=strategy_options, default='ep', nargs='*',
+    parser.add_argument('-s', '--strategy', choices=strategy_options, default='ss', nargs='*',
                         help='\n'.join(f'{key}: {value}' for key, value in strategy_options.items()),
                         metavar='S')
     parser.add_argument('-v', '--version', action='version', version='Algorithmic Trading 0.0.1')
@@ -55,9 +61,11 @@ def set_parser():
                                help='Maximum current closing value.')
     filter_parser.add_argument('-avg_30', dest='avg_30_volume', type=int,
                                help='Average volume over 30 days.')
+    filter_parser.add_argument('-quote_type', dest='quote_type', type=str, default='EQUITY',
+                               help='What type of stock to filter for.')
     parser.set_defaults(run='live',
-                        close_min=5,
-                        close_max=100,
+                        close_min=1,
+                        close_max=5,
                         avg_30_volume=1000000)
 
     return parser.parse_args()
@@ -65,7 +73,7 @@ def set_parser():
 
 def filter_stock_list(filter_options):
     print(f'{datetime.datetime.now()} :: Importing stock data files.')
-    historical_stock_data_manager.import_data(stock_data)
+    historical_stock_data_manager.import_data(stock_data, filter_options.quote_type)
     print(f'{datetime.datetime.now()} :: Imported {len(stock_data)} files.')
     for key, value in list(stock_data.items()):
         if (value.daily_stock_data.volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
@@ -104,16 +112,16 @@ def order(symbol, risk, price, reward):
     test = trade_api.get_last_trade(symbol=symbol)
     if price > test.price > risk:
         print(f'Stock - {symbol} :: Risk - {risk} :: Price - {price} :: Last Trade - {test.price}:: Reward - {reward}')
-        trade_api.submit_order(symbol=symbol,
-                               side='buy',
-                               type='stop',
-                               stop_price=price,
-                               qty=math.floor((float(account.cash) * .01) / price),
-                               time_in_force='gtc',
-                               order_class='bracket',
-                               take_profit=dict(limit_price=reward),
-                               stop_loss=dict(stop_price=risk,
-                                              limit_price=str(round(risk * .99, 2))))
+        #trade_api.submit_order(symbol=symbol,
+        #                       side='buy',
+        #                       type='stop',
+        #                       stop_price=price,
+        #                       qty=math.floor((float(account.cash) * .01) / price),
+        #                       time_in_force='day',
+        #                       order_class='bracket',
+        #                       take_profit=dict(limit_price=reward),
+        #                       stop_loss=dict(stop_price=risk,
+        #                                      limit_price=str(round(risk * .99, 2))))
 
 
 def main():
