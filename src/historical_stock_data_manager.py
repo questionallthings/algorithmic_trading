@@ -13,6 +13,11 @@ def import_stock_data(stock_name):
     dataframe_import = pd.read_csv(filepath_or_buffer=f'{stock_files_directory}{stock_name}_daily_stock_data.txt',
                                    sep=',')
     dataframe_import['strategy'] = False
+    dataframe_import['backtest_profit'] = 0.0
+    dataframe_import['buy_price'] = 0.0
+    dataframe_import['sell_price'] = 0.0
+    dataframe_import['risk'] = 0.0
+    dataframe_import['reward'] = 0.0
 
     return dataframe_import
 
