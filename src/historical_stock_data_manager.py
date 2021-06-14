@@ -12,6 +12,8 @@ def import_stock_data(stock_name):
     print(f'{datetime.datetime.now()} :: Importing {stock_name} historical stock data.')
     dataframe_import = pd.read_csv(filepath_or_buffer=f'{stock_files_directory}{stock_name}_daily_stock_data.txt',
                                    sep=',')
+    dataframe_import['strategy'] = False
+
     return dataframe_import
 
 
