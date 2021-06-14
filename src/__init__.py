@@ -115,16 +115,16 @@ def order(stock_data_order):
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
-        #trade_api.submit_order(symbol=symbol,
-        #                       side='buy',
-        #                       type='stop',
-        #                       stop_price=price,
-        #                       qty=math.floor((float(account.cash) * .01) / price),
-        #                       time_in_force='day',
-        #                       order_class='bracket',
-        #                       take_profit=dict(limit_price=reward),
-        #                       stop_loss=dict(stop_price=risk,
-        #                                      limit_price=str(round(risk * .99, 2))))
+        trade_api.submit_order(symbol=stock_data_order.symbol,
+                               side='buy',
+                               type='stop',
+                               stop_price=stock_data_order.buy_price,
+                               qty=math.floor((float(account.cash) * .01) / stock_data_order.buy_price),
+                               time_in_force='day',
+                               order_class='bracket',
+                               take_profit=dict(limit_price=stock_data_order.reward),
+                               stop_loss=dict(stop_price=stock_data_order.risk,
+                                              limit_price=str(round(stock_data_order.risk * .99, 2))))
 
 
 def main():

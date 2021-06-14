@@ -7,6 +7,9 @@ def stochastic_supertrend_concurrent(stock, arguments):
     stock[1].daily_stock_data['cross_up'] = False
     stock[1].daily_stock_data['cross_down'] = False
     stock[1].daily_stock_data.ta.ema(length=200, append=True)
+    if arguments.run == 'live' and \
+            (stock[1].daily_stock_data.EMA_200.iloc[-1] > stock[1].daily_stock_data.close.iloc[-1]):
+        return stock[1].daily_stock_data
     stock[1].daily_stock_data.ta.atr(append=True)
     stock[1].daily_stock_data.ta.supertrend(append=True)
     stock[1].daily_stock_data.rename(columns={'SUPERT_7_3.0': 'supertrend',
