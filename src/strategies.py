@@ -43,7 +43,7 @@ def stochastic_supertrend_concurrent(stock, bt=False):
     stock[1].daily_stock_data.ta.atr(append=True)
     for i in range(1, len(stock[1].daily_stock_data)):
         if -i in cross_ups and not cross_up_found:
-            stock[1].daily_stock_data.strategy.iloc[-i] = True
+            stock[1].daily_stock_data.at[-i, 'strategy'] = True
             cross_up_found = True
             super_stochastic_risk_low_end = -i
         elif -i in cross_downs and not cross_down_found:
@@ -105,7 +105,7 @@ def engulfing_pattern_concurrent(stock, bt=False):
                 stock[1].daily_stock_data.open.iloc[-i - 1] >
                 stock[1].daily_stock_data.close.iloc[-i - 1] >
                 stock[1].daily_stock_data.open.iloc[-i]):
-            stock[1].daily_stock_data.strategy.iloc[-i] = True
+            stock[1].daily_stock_data.at[-i, 'strategy'] = True
             strategy_risk = min((stock[1].daily_stock_data.close.iloc[-i] -
                                  stock[1].daily_stock_data.open.iloc[-i]),
                                 round(stock[1].daily_stock_data.ATRr_14.iloc[-i], 4))
@@ -118,10 +118,10 @@ def engulfing_pattern_concurrent(stock, bt=False):
                                           strategy_reward, 2)])
             if not bt:
                 return stock[1].daily_stock_data,\
-                       [stock[1].daily_stock_data.date.iloc[-i],
-                        round(stock[1].daily_stock_data.close.iloc[-i] - strategy_risk, 2),
-                        round(stock[1].daily_stock_data.close.iloc[-i], 2),
-                        round(stock[1].daily_stock_data.close.iloc[-i] + strategy_reward, 2)]
+                            [stock[1].daily_stock_data.date.iloc[-i],
+                             round(stock[1].daily_stock_data.close.iloc[-i] - strategy_risk, 2),
+                             round(stock[1].daily_stock_data.close.iloc[-i], 2),
+                             round(stock[1].daily_stock_data.close.iloc[-i] + strategy_reward, 2)]
 
     return stock[1].daily_stock_data, strategy_orders
 
