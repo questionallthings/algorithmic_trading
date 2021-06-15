@@ -53,8 +53,8 @@ def set_parser():
     subparsers = parser.add_subparsers()
     run_parser = subparsers.add_parser('run', help='run -h')
     run_exclusive_group = run_parser.add_mutually_exclusive_group()
-    run_exclusive_group.add_argument('-b', '--backtest_results',
-                                     action='store_const', dest='run', const='backtest_results',
+    run_exclusive_group.add_argument('-b', '--backtest',
+                                     action='store_const', dest='run', const='backtest',
                                      help='This will force a backtest_results of any strategy selected.')
     run_exclusive_group.add_argument('-u', '--update',
                                      action='store_const', dest='run', const='update',
@@ -120,6 +120,7 @@ def run_backtest(strategy_stock_data):
 
 def run_strategy(strategy, arguments):
     getattr(strategies, strategy)(stock_data, arguments)
+    # getattr(testing, strategy)(stock_data, arguments)
 
 
 def order(stock_data_order):
@@ -159,14 +160,14 @@ def main():
         filter_stock_list(arguments)
         print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
         run_strategy(arguments.strategy, arguments)
-        if arguments.run == 'backtest_results':
+        if arguments.run == 'backtest':
             for each_stock in stock_data:
                 run_backtest(stock_data[each_stock].stock_data)
         elif arguments.run == 'live':
             print(f'{datetime.datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
                   f'{len(stock_data)} stock(s).')
-            for each_stock in stock_data:
-                order(stock_data[each_stock].stock_data.iloc[-1])
+            #for each_stock in stock_data:
+            #    order(stock_data[each_stock].stock_data.iloc[-1])
 
 
 if __name__ == "__main__":

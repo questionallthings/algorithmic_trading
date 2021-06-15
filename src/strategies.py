@@ -6,29 +6,25 @@ import pandas_ta as ta
 def stochastic_supertrend_concurrent(stock, arguments):
     stock[1].stock_data['cross_up'] = False
     stock[1].stock_data['cross_down'] = False
-    stock[1].stock_data.ta.ema(length=200, append=True)
-    if arguments.run == 'live' and \
-            (stock[1].stock_data.EMA_200.iloc[-1] > stock[1].stock_data.close.iloc[-1]):
+    stock[1].stock_data['ema_200_trend'] = stock[1].stock_data.ta.ema(length=200) < stock[1].stock_data.close
+    if arguments.run == 'live' and not stock[1].stock_data['ema_200_trend'].iloc[-1]:
         return stock[1].stock_data
-    stock[1].stock_data.ta.atr(append=True)
-    stock[1].stock_data.ta.stochrsi(append=True)
     stock[1].stock_data.ta.supertrend(append=True)
+    if arguments.run == 'live' and stock[1].stock_data['SUPERTd_7_3.0'].iloc[-1] < 1:
+        return stock[1].stock_data
+    stock[1].stock_data['stoch_trend'] = stock[1].stock_data.ta.stochrsi().STOCHRSIk_14_14_3_3 - \
+        stock[1].stock_data.ta.stochrsi().STOCHRSId_14_14_3_3
+    stock[1].stock_data.ta.atr(append=True)
     for i in range(600, len(stock[1].stock_data)):
         stock[1].stock_data.backtest_profit.iat[i] = stock[1].stock_data.backtest_profit.iat[i - 1]
         if stock[1].stock_data['SUPERTd_7_3.0'].iloc[i] > 0:
-            if (stock[1].stock_data.STOCHRSIk_14_14_3_3.iloc[i] <
-                stock[1].stock_data.STOCHRSId_14_14_3_3.iloc[i]) and \
-                    (stock[1].stock_data.STOCHRSIk_14_14_3_3.iloc[i - 1] >
-                     stock[1].stock_data.STOCHRSId_14_14_3_3.iloc[i - 1]) and \
+            if (stock[1].stock_data.stoch_trend.iloc[i] <= 0 < stock[1].stock_data.stoch_trend.iloc[i - 1]) and \
                     (stock[1].stock_data.risk.iat[i - 1] == 0.0 or
                      stock[1].stock_data.reward.iat[i - 1] == 0.0):
                 stock[1].stock_data.cross_down.iat[i] = True
                 stock[1].stock_data.cross_up.iat[i] = False
                 stock[1].stock_data.risk.iat[i] = stock[1].stock_data.low.iloc[i]
-            elif (stock[1].stock_data.STOCHRSIk_14_14_3_3.iloc[i] >
-                  stock[1].stock_data.STOCHRSId_14_14_3_3.iloc[i]) and \
-                    (stock[1].stock_data.STOCHRSIk_14_14_3_3.iloc[i - 1] <
-                     stock[1].stock_data.STOCHRSId_14_14_3_3.iloc[i - 1]) and \
+            elif (stock[1].stock_data.stoch_trend.iloc[i] > 0 >= stock[1].stock_data.stoch_trend.iloc[i - 1]) and \
                     (stock[1].stock_data.risk.iat[i - 1] == 0.0 or
                      stock[1].stock_data.reward.iat[i - 1] == 0.0):
                 stock[1].stock_data.cross_up.iat[i] = True
@@ -79,7 +75,7 @@ def stochastic_supertrend_concurrent(stock, arguments):
                 stock[1].stock_data.reward.iat[i] = 0.0
                 stock[1].stock_data.buy_price.iat[i] = 0.0
 
-    if arguments.run == 'backtest_results':
+    if arguments.run == 'backtest':
         stock[1].stock_data.to_csv(path_or_buf=f'backtest_results/{stock[0]}_backtest.csv', na_rep='n/a', index=False)
 
     return stock[1].stock_data
