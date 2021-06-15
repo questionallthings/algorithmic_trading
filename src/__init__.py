@@ -2,11 +2,13 @@
 
 # Imports
 from argparse import ArgumentParser, RawTextHelpFormatter
+from concurrent import futures
 import datetime
 import sys
 import os
 import math
 import json
+from itertools import repeat
 
 import alpaca_trade_api
 import pandas as pd
@@ -36,7 +38,12 @@ class StockData:
 
 
 def set_parser():
-    strategy_options = ['stochastic_supertrend']
+    run_options = ['update',
+                   'backtest',
+                   'live']
+    strategy_options = ['stochastic_supertrend',
+                        'dividend_capture',
+                        'dividend_rebound']
     money_management_options = ['ratio_1_1',
                                 'ratio_1_1.5',
                                 'ratio_1_2',
@@ -51,17 +58,9 @@ def set_parser():
                          '1d']
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
     subparsers = parser.add_subparsers()
-    run_parser = subparsers.add_parser('run', help='run -h')
-    run_exclusive_group = run_parser.add_mutually_exclusive_group()
-    run_exclusive_group.add_argument('-b', '--backtest',
-                                     action='store_const', dest='run', const='backtest',
-                                     help='This will force a backtest_results of any strategy selected.')
-    run_exclusive_group.add_argument('-u', '--update',
-                                     action='store_const', dest='run', const='update',
-                                     help='This will force an update of the historical daily stock data.')
-    run_exclusive_group.add_argument('-l', '--live',
-                                     action='store_const', dest='run', const='live',
-                                     help='This will run the program live with no back testing or update.')
+    parser.add_argument('-r', '--run', choices=run_options,
+                        help='\n'.join(f'{run_item}' for run_item in run_options),
+                        metavar='R')
     parser.add_argument('-m', '--manage', choices=money_management_options,
                         help='\n'.join(f'{manage_item}' for manage_item in money_management_options),
                         metavar='M')
@@ -84,13 +83,13 @@ def set_parser():
                                help='Average volume over 30 days.')
     filter_parser.add_argument('-quote_type', dest='quote_type', type=str,
                                help='What type of stock to filter for.')
-    parser.set_defaults(run='live',
+    parser.set_defaults(run=run_options[2],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[1],
                         strategy=strategy_options[0],
                         close_min=5,
-                        close_max=100,
+                        close_max=20,
                         avg_30_volume=1000000,
                         quote_type='EQUITY')
 
@@ -119,8 +118,18 @@ def run_backtest(strategy_stock_data):
 
 
 def run_strategy(strategy, arguments):
-    getattr(strategies, strategy)(stock_data, arguments)
-    # getattr(testing, strategy)(stock_data, arguments)
+    with futures.ProcessPoolExecutor(max_workers=2) as indicator_executor:
+        for each_stock, stock_list_results in zip(stock_data,
+                                                  indicator_executor.map(getattr(strategies, strategy),
+                                                                         stock_data.items(),
+                                                                         repeat(arguments))):
+            stock_data[each_stock].stock_data = stock_list_results
+    if arguments.run == 'live':
+        for each_stock, value in list(stock_data.items()):
+            if not stock_data[each_stock].stock_data.strategy.iloc[-1] or \
+                    stock_data[each_stock].stock_data.risk.iloc[-1] == 0.0 or \
+                    stock_data[each_stock].stock_data.reward.iloc[-1] == 0.0:
+                del stock_data[each_stock]
 
 
 def order(stock_data_order):
