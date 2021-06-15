@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Imports
 from argparse import ArgumentParser, RawTextHelpFormatter
 from concurrent import futures
@@ -7,13 +5,16 @@ import datetime
 import sys
 import os
 import math
+import matplotlib.pyplot as plt
+import mplfinance as mpf
+import numpy as np
 import json
 from itertools import repeat
 
 import alpaca_trade_api
 import pandas as pd
 
-import historical_stock_data_manager
+import stock_data_manager
 import strategies
 from tests import testing
 
@@ -42,8 +43,7 @@ def set_parser():
                    'backtest',
                    'live']
     strategy_options = ['stochastic_supertrend',
-                        'dividend_capture',
-                        'dividend_rebound']
+                        'rsi_stochastic_200ema']
     money_management_options = ['ratio_1_1',
                                 'ratio_1_1.5',
                                 'ratio_1_2',
@@ -83,13 +83,13 @@ def set_parser():
                                help='Average volume over 30 days.')
     filter_parser.add_argument('-quote_type', dest='quote_type', type=str,
                                help='What type of stock to filter for.')
-    parser.set_defaults(run=run_options[2],
+    parser.set_defaults(run=run_options[1],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[1],
                         strategy=strategy_options[0],
                         close_min=5,
-                        close_max=20,
+                        close_max=200,
                         avg_30_volume=1000000,
                         quote_type='EQUITY')
 
@@ -98,7 +98,7 @@ def set_parser():
 
 def filter_stock_list(filter_options):
     print(f'{datetime.datetime.now()} :: Importing stock data files.')
-    historical_stock_data_manager.import_data(stock_data, filter_options)
+    stock_data_manager.import_data(stock_data, filter_options)
     print(f'{datetime.datetime.now()} :: Imported {len(stock_data)} files.')
     with open(stock_list_file) as file:
         ticker_data = json.load(file)
@@ -114,7 +114,10 @@ def filter_stock_list(filter_options):
 
 
 def run_backtest(strategy_stock_data):
-    pass
+    mpf.plot(strategy_stock_data, type='candle')
+    strategy_stock_data.to_csv(path_or_buf=f'backtest_results/{strategy_stock_data.symbol.iloc[-1]}_backtest.csv',
+                               na_rep='n/a',
+                               index=False)
 
 
 def run_strategy(strategy, arguments):
@@ -134,12 +137,18 @@ def run_strategy(strategy, arguments):
 
 def order(stock_data_order):
     test = trade_api.get_last_trade(symbol=stock_data_order.symbol)
-    if stock_data_order.buy_price > test.price > stock_data_order.risk:
+    print(f'Stock - {stock_data_order.symbol} :: '
+          f'Risk - {stock_data_order.risk} :: '
+          f'Price - {stock_data_order.buy_price} :: '
+          f'Last Trade - {test.price}:: '
+          f'Reward - {stock_data_order.reward}')
+    if stock_data_order.buy_price >= test.price > stock_data_order.risk:
         print(f'Stock - {stock_data_order.symbol} :: '
               f'Risk - {stock_data_order.risk} :: '
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
+        '''
         trade_api.submit_order(symbol=stock_data_order.symbol,
                                side='buy',
                                type='stop',
@@ -150,33 +159,34 @@ def order(stock_data_order):
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
+        '''
 
 
 def main():
     print(f'{datetime.datetime.now()} :: Starting')
     arguments = set_parser()
-    for each_stock in os.listdir(stock_files_directory):
-        stock_data[each_stock.split('_')[0]] = StockData()
-    print(f'{datetime.datetime.now()} :: Using the following arguments: {arguments}.')
     if arguments.run == 'update':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
-        historical_stock_data_manager.update_stock_list(trade_api.list_assets())
-        historical_stock_data_manager.update_data(arguments)
+        stock_data_manager.update_stock_list(trade_api.list_assets())
+        stock_data_manager.update_data(arguments)
         print(f'Program took {datetime.datetime.now() - start_time} to run.')
         sys.exit()
     else:
+        for each_stock in os.listdir(stock_files_directory):
+            stock_data[each_stock.split('_')[0]] = StockData()
+        print(f'{datetime.datetime.now()} :: Using the following arguments: {arguments}.')
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
         filter_stock_list(arguments)
         print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
         run_strategy(arguments.strategy, arguments)
+        print(f'{datetime.datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
+              f'{len(stock_data)} stock(s).')
         if arguments.run == 'backtest':
             for each_stock in stock_data:
                 run_backtest(stock_data[each_stock].stock_data)
         elif arguments.run == 'live':
-            print(f'{datetime.datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
-                  f'{len(stock_data)} stock(s).')
-            #for each_stock in stock_data:
-            #    order(stock_data[each_stock].stock_data.iloc[-1])
+            for each_stock in stock_data:
+                order(stock_data[each_stock].stock_data.iloc[-1])
 
 
 if __name__ == "__main__":

@@ -39,7 +39,11 @@ def update_stock_data(stock, arguments):
                                                 interval=arguments.timeframe).round(5)
     if len(daily_stock_data) > 730:
         print(f'{datetime.datetime.now()} :: Updating {stock} historical stock data.')
-        daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_{arguments.timeframe}_stock_data.txt')
+        print(daily_stock_data)
+        daily_stock_data.set_index('date', inplace=True)
+        print('hello')
+        #print(daily_stock_data)
+        #daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_{arguments.timeframe}_stock_data.txt')
 
 
 def update_data(arguments):

@@ -1,3 +1,8 @@
+# List of strategies from Trade Pro
+'https://docs.google.com/spreadsheets/d/1LQ7lwnvcB5eacK4PxLXnV1mMEIzSxHzD8IZpP2N1oA8/edit#gid=0'
+# Multitimeframe + MACD not doable because pandas_ta does not provide MTF indicators.
+
+
 import pandas_ta as ta
 
 
@@ -73,51 +78,27 @@ def stochastic_supertrend(stock, arguments):
                 stock[1].stock_data.reward.iat[i] = 0.0
                 stock[1].stock_data.buy_price.iat[i] = 0.0
 
-    if arguments.run == 'backtest':
-        stock[1].stock_data.to_csv(path_or_buf=f'backtest_results/{stock[0]}_backtest.csv', na_rep='n/a', index=False)
-
     return stock[1].stock_data
 
 
-def dividend_capture(stock, arguments):
+def mtf_ema_macd(stock, arguments):
     pass
+    '''
+    multitimeframe_ema (hourly, 50 period)
+                       (15 min, 50 period)
+    macd (default)
+    
+    long
+    15 > hourly
+    price highs go lower
+    macd lows go higher
+    macd between lows don't cross above histogram 0
+    entry first macd cross up
+    risk is nearest swing low
+    reward 2x risk
+    
+    short
+    opposite above    
+    '''
 
 
-def dividend_rebound(stock, arguments):
-    if 'dividends' not in stock[1].stock_data:
-        return stock[1].stock_data
-    stock[1].stock_data['ema_200_trend'] = stock[1].stock_data.ta.ema(length=200) < stock[1].stock_data.close
-    if arguments.run == 'live' and not stock[1].stock_data['ema_200_trend'].iloc[-1]:
-        return stock[1].stock_data
-    for i in range(300, len(stock[1].stock_data)):
-        stock[1].stock_data.backtest_profit.iat[i] = stock[1].stock_data.backtest_profit.iat[i - 1]
-        if stock[1].stock_data.dividends.iloc[i - 1]:
-            stock[1].stock_data.buy_price.iat[i] = stock[1].stock_data.open.iloc[i]
-            stock[1].stock_data.reward.iat[i] = stock[1].stock_data.high.iloc[i - 1]
-            stock[1].stock_data.risk.iat[i] = stock[1].stock_data.buy_price.iloc[i] * .95
-            stock[1].stock_data.strategy.iat[i] = True
-        else:
-            if (stock[1].stock_data.risk.iloc[i] > stock[1].stock_data.low.iloc[i]) and \
-                    (stock[1].stock_data.reward.iloc[i] < stock[1].stock_data.high.iloc[i]):
-                stock[1].stock_data.buy_price.iat[i] = stock[1].stock_data.buy_price.iloc[i - 1]
-                stock[1].stock_data.risk.iat[i] = stock[1].stock_data.risk.iloc[i - 1]
-                stock[1].stock_data.reward.iat[i] = stock[1].stock_data.reward.iloc[i - 1]
-            elif stock[1].stock_data.risk.iloc[i] > stock[1].stock_data.low.iloc[i]:
-                stock[1].stock_data.backtest_profit.iat[i] = \
-                    stock[1].stock_data.backtest_profit.iloc[i - 1] - \
-                    (stock[1].stock_data.buy_price.iloc[i] - stock[1].stock_data.risk.iloc[i])
-                stock[1].stock_data.sell_price.iat[i] = stock[1].stock_data.risk.iloc[i]
-            elif stock[1].stock_data.reward.iloc[i] < stock[1].stock_data.high.iloc[i]:
-                stock[1].stock_data.backtest_profit.iat[i] = \
-                    stock[1].stock_data.backtest_profit.iloc[i - 1] + \
-                    (stock[1].stock_data.reward.iloc[i] - stock[1].stock_data.buy_price.iloc[i])
-                stock[1].stock_data.sell_price.iat[i] = stock[1].stock_data.reward.iloc[i]
-            else:
-                stock[1].stock_data.buy_price.iat[i] = stock[1].stock_data.buy_price.iloc[i - 1]
-                stock[1].stock_data.risk.iat[i] = stock[1].stock_data.risk.iloc[i - 1]
-                stock[1].stock_data.reward.iat[i] = stock[1].stock_data.reward.iloc[i - 1]
-
-    if arguments.run == 'backtest':
-        stock[1].stock_data.to_csv(path_or_buf=f'backtest_results/{stock[0]}_backtest.csv', na_rep='n/a', index=False)
-
-    return stock[1].stock_data
