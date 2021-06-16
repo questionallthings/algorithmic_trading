@@ -41,6 +41,7 @@ class StockData:
 def set_parser():
     run_options = ['update',
                    'backtest',
+                   'strategy'
                    'live']
     strategy_options = ['stochastic_supertrend',
                         'rsi_stochastic_200ema']
@@ -83,7 +84,7 @@ def set_parser():
                                help='Average volume over 30 days.')
     filter_parser.add_argument('-quote_type', dest='quote_type', type=str,
                                help='What type of stock to filter for.')
-    parser.set_defaults(run=run_options[2],
+    parser.set_defaults(run=run_options[3],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[1],
@@ -114,12 +115,17 @@ def filter_stock_list(filter_options):
 
 
 def run_backtest(strategy_stock_data):
-    print(f'{datetime.datetime.now()} :: Displaying finance chart window.')
-    mpf.plot(strategy_stock_data, type='candle')
     print(f'{datetime.datetime.now()} :: Saving backtest results.')
     strategy_stock_data.to_csv(path_or_buf=f'backtest_results/{strategy_stock_data.symbol.iloc[-1]}_backtest.csv',
                                na_rep='n/a',
                                index=False)
+
+
+def test_strategy(strategy_stock_data):
+    print(f'{datetime.datetime.now()} :: Displaying finance chart window.')
+    mpf.plot(strategy_stock_data,
+             type='candle',
+             warn_too_much_data=1000000)
 
 
 def run_strategy(strategy, arguments):
@@ -181,6 +187,8 @@ def main():
         if arguments.run == 'backtest':
             for each_stock in stock_data:
                 run_backtest(stock_data[each_stock].stock_data)
+        elif arguments.run == 'strategy':
+            test_strategy(stock_data['HPQ'].stock_data) # HPQ is used due to largest set of stock data
         elif arguments.run == 'live':
             for each_stock in stock_data:
                 order(stock_data[each_stock].stock_data.iloc[-1])
