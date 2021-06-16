@@ -83,7 +83,7 @@ def set_parser():
                                help='Average volume over 30 days.')
     filter_parser.add_argument('-quote_type', dest='quote_type', type=str,
                                help='What type of stock to filter for.')
-    parser.set_defaults(run=run_options[1],
+    parser.set_defaults(run=run_options[2],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[1],
@@ -137,29 +137,22 @@ def run_strategy(strategy, arguments):
 
 def order(stock_data_order):
     test = trade_api.get_last_trade(symbol=stock_data_order.symbol)
-    print(f'Stock - {stock_data_order.symbol} :: '
-          f'Risk - {stock_data_order.risk} :: '
-          f'Price - {stock_data_order.buy_price} :: '
-          f'Last Trade - {test.price}:: '
-          f'Reward - {stock_data_order.reward}')
     if stock_data_order.buy_price >= test.price > stock_data_order.risk:
         print(f'Stock - {stock_data_order.symbol} :: '
               f'Risk - {stock_data_order.risk} :: '
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
-        '''
         trade_api.submit_order(symbol=stock_data_order.symbol,
                                side='buy',
                                type='stop',
                                stop_price=stock_data_order.buy_price,
                                qty=math.floor((float(account.cash) * .01) / stock_data_order.buy_price),
-                               time_in_force='day',
+                               time_in_force='gtc',
                                order_class='bracket',
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
-        '''
 
 
 def main():
