@@ -13,8 +13,9 @@ def import_stock_data(stock_name, arguments):
     print(f'{datetime.datetime.now()} :: Importing {stock_name} historical stock data.')
     dataframe_import = pd.read_csv(filepath_or_buffer=f'{stock_files_directory}{stock_name}_'
                                                       f'{arguments.timeframe}_stock_data.txt',
-                                   sep=',')
-    pd.to_datetime(dataframe_import.index)
+                                   sep=',',
+                                   index_col='date',
+                                   parse_dates=True)
     dataframe_import['strategy'] = False
     dataframe_import['backtest_profit'] = 0.0
     dataframe_import['buy_price'] = 0.0

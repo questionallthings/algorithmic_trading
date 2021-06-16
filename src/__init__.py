@@ -114,7 +114,9 @@ def filter_stock_list(filter_options):
 
 
 def run_backtest(strategy_stock_data):
+    print(f'{datetime.datetime.now()} :: Displaying finance chart window.')
     mpf.plot(strategy_stock_data, type='candle')
+    print(f'{datetime.datetime.now()} :: Saving backtest results.')
     strategy_stock_data.to_csv(path_or_buf=f'backtest_results/{strategy_stock_data.symbol.iloc[-1]}_backtest.csv',
                                na_rep='n/a',
                                index=False)
@@ -143,6 +145,7 @@ def order(stock_data_order):
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
+        '''
         trade_api.submit_order(symbol=stock_data_order.symbol,
                                side='buy',
                                type='stop',
@@ -153,6 +156,7 @@ def order(stock_data_order):
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
+        '''
 
 
 def main():
