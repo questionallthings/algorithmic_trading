@@ -25,14 +25,12 @@ backtest_results_directory = 'backtest_results/'
 stock_list_file = 'stock_list.txt'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
+database_name = 'testing'
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
 pd.set_option('max_rows', 999)
 pd.set_option('display.expand_frame_repr', False)
-
-
-database_ip = '192.168.1.115'
 
 
 class StockData:
