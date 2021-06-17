@@ -1,4 +1,5 @@
 from concurrent import futures
+from itertools import repeat
 import yahooquery as yq
 import pandas as pd
 import json
@@ -8,10 +9,13 @@ stock_files_directory = 'stocks/'
 stock_list_file = 'stock_list.txt'
 
 
-def import_stock_data(stock_name):
+def import_stock_data(stock_name, arguments):
     print(f'{datetime.datetime.now()} :: Importing {stock_name} historical stock data.')
-    dataframe_import = pd.read_csv(filepath_or_buffer=f'{stock_files_directory}{stock_name}_daily_stock_data.txt',
-                                   sep=',')
+    dataframe_import = pd.read_csv(filepath_or_buffer=f'{stock_files_directory}{stock_name}_'
+                                                      f'{arguments.timeframe}_stock_data.txt',
+                                   sep=',',
+                                   index_col='date',
+                                   parse_dates=True)
     dataframe_import['strategy'] = False
     dataframe_import['backtest_profit'] = 0.0
     dataframe_import['buy_price'] = 0.0
@@ -22,23 +26,27 @@ def import_stock_data(stock_name):
     return dataframe_import
 
 
-def import_data(stock_data):
+def import_data(stock_data, arguments):
     print(f'{datetime.datetime.now()} :: Importing historical stock data.')
     with futures.ProcessPoolExecutor(max_workers=2) as import_executor:
         for each_stock, stock_list_results in zip(stock_data, import_executor.map(import_stock_data,
-                                                                                  stock_data)):
-            stock_data[each_stock].daily_stock_data = stock_list_results
+                                                                                  stock_data,
+                                                                                  repeat(arguments))):
+            stock_data[each_stock].stock_data = stock_list_results
 
 
-def update_stock_data(stock):
+def update_stock_data(stock, arguments):
     yahoo_query_data = yq.Ticker(stock)
-    daily_stock_data = yahoo_query_data.history(period='max').round(5)
+    daily_stock_data = yahoo_query_data.history(period=arguments.period,
+                                                interval=arguments.timeframe).round(5)
     if len(daily_stock_data) > 730:
         print(f'{datetime.datetime.now()} :: Updating {stock} historical stock data.')
-        daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_daily_stock_data.txt')
+        daily_stock_data.reset_index(level=[0, 1], inplace=True)
+        daily_stock_data.set_index('date', inplace=True)
+        daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_{arguments.timeframe}_stock_data.txt')
 
 
-def update_data():
+def update_data(arguments):
     update_list = []
     print(f'{datetime.datetime.now()} :: Updating historical stock data.')
     with open(stock_list_file) as file:
@@ -46,7 +54,7 @@ def update_data():
     for each_ticker in ticker_data:
         update_list.append(each_ticker['symbol'])
     with futures.ThreadPoolExecutor() as update_executor:
-        update_executor.map(update_stock_data, update_list)
+        update_executor.map(update_stock_data, update_list, repeat(arguments))
 
 
 def update_stock_list_data(stock):
