@@ -32,6 +32,9 @@ pd.set_option('max_rows', 999)
 pd.set_option('display.expand_frame_repr', False)
 
 
+database_ip = '192.168.1.115'
+
+
 class StockData:
     def __init__(self):
         self.stock_data = ''
@@ -151,7 +154,7 @@ def order(stock_data_order):
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
-        '''
+        # '''
         trade_api.submit_order(symbol=stock_data_order.symbol,
                                side='buy',
                                type='stop',
@@ -162,7 +165,7 @@ def order(stock_data_order):
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
-        '''
+        # '''
 
 
 def main():
