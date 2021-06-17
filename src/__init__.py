@@ -41,7 +41,7 @@ class StockData:
 def set_parser():
     run_options = ['update',
                    'backtest',
-                   'strategy'
+                   'strategy',
                    'live']
     strategy_options = ['stochastic_supertrend',
                         'rsi_stochastic_200ema']
