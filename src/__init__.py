@@ -16,7 +16,6 @@ import pandas as pd
 
 import stock_data_manager
 import strategies
-from tests import testing
 
 
 stock_data = {}
@@ -25,7 +24,6 @@ backtest_results_directory = 'backtest_results/'
 stock_list_file = 'stock_list.txt'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
-database_name = 'testing'
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
@@ -108,7 +106,8 @@ def filter_stock_list(filter_options):
         if each_ticker['symbol'] in stock_data:
             stock_data[each_ticker['symbol']].quote_type = each_ticker['quoteType']
     for key, value in list(stock_data.items()):
-        if (value.stock_data.volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
+        if (len(value.stock_data.volume) > 730) and \
+                (value.stock_data.volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
                 (value.stock_data.close.iloc[-1] > filter_options.close_max) or \
                 (value.stock_data.close.iloc[-1] < filter_options.close_min) or \
                 (value.quote_type != 'EQUITY'):
@@ -171,7 +170,7 @@ def main():
     arguments = set_parser()
     if arguments.run == 'update':
         print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
-        stock_data_manager.update_stock_list(trade_api.list_assets())
+        #stock_data_manager.update_stock_list(trade_api.list_assets())
         stock_data_manager.update_data(arguments)
         print(f'Program took {datetime.datetime.now() - start_time} to run.')
         sys.exit()
@@ -189,7 +188,7 @@ def main():
             for each_stock in stock_data:
                 run_backtest(stock_data[each_stock].stock_data)
         elif arguments.run == 'strategy':
-            test_strategy(stock_data['HPQ'].stock_data) # HPQ is used due to largest set of stock data
+            test_strategy(stock_data['HPQ'].stock_data)  # HPQ is used due to largest set of stock data
         elif arguments.run == 'live':
             for each_stock in stock_data:
                 order(stock_data[each_stock].stock_data.iloc[-1])

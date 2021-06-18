@@ -4,9 +4,15 @@ import yahooquery as yq
 import pandas as pd
 import json
 import datetime
+import db_manager
 
 stock_files_directory = 'stocks/'
 stock_list_file = 'stock_list.txt'
+
+
+def update_database(data):
+    db = db_manager.Database()
+    db.update_tables(data)
 
 
 def import_stock_data(stock_name, arguments):
@@ -38,12 +44,13 @@ def import_data(stock_data, arguments):
 def update_stock_data(stock, arguments):
     yahoo_query_data = yq.Ticker(stock)
     daily_stock_data = yahoo_query_data.history(period=arguments.period,
-                                                interval=arguments.timeframe).round(5)
-    if len(daily_stock_data) > 730:
-        print(f'{datetime.datetime.now()} :: Updating {stock} historical stock data.')
-        daily_stock_data.reset_index(level=[0, 1], inplace=True)
-        daily_stock_data.set_index('date', inplace=True)
-        daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_{arguments.timeframe}_stock_data.txt')
+                                                interval=arguments.timeframe)
+    print(f'{datetime.datetime.now()} :: Updating {stock} historical stock data.')
+    daily_stock_data.reset_index(level=[0, 1], inplace=True)
+    daily_stock_data.set_index('date', inplace=True)
+    print(daily_stock_data)
+    update_database(daily_stock_data)
+    daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_{arguments.timeframe}_stock_data.txt')
 
 
 def update_data(arguments):
