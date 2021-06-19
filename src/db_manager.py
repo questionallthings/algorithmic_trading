@@ -1,7 +1,7 @@
 import pymysql
 import pandas
 import os
-import datetime
+from datetime import datetime
 from concurrent import futures
 import alpaca_trade_api
 import yahooquery as yq
@@ -68,7 +68,7 @@ class Database:
             query_text = f'INSERT INTO daily_bars (date, '
             for each_column in columns[:-1]:
                 query_text += f'{each_column}, '
-            query_text += f'{columns[-1]}) VALUES (\'{datetime.datetime.strftime(each_date, "%Y-%m-%d")}\', '
+            query_text += f'{columns[-1]}) VALUES (\'{datetime.strftime(each_date, "%Y-%m-%d")}\', '
             for each_column in columns[:-1]:
                 if each_column == 'symbol':
                     query_text += f'\'{daily_stock_data.loc[each_date].loc[each_column]}\', '
@@ -85,7 +85,7 @@ class Database:
 
 
 if __name__ == '__main__':
-    start_time = datetime.datetime.now()
+    start_time = datetime.now()
     database = Database()
     alpaca_tradeable_assets = []
     memsql_stock_info_list = []
@@ -101,10 +101,10 @@ if __name__ == '__main__':
                                     database=database.database_name,
                                     cursorclass=pymysql.cursors.DictCursor)
     with memsql_server.cursor() as db_query:
-        db_query.execute('SELECT SYMBOL FROM stock_info')
+        db_query.execute('SELECT symbol FROM stock_info')
         memsql_stock_list_result = db_query.fetchall()
     for each in memsql_stock_list_result:
-        memsql_stock_info_list.append(each['SYMBOL'])
+        memsql_stock_info_list.append(each['symbol'])
 
     # # # UPDATING STOCK INFO
     for each in tradeable_assets:
@@ -119,4 +119,4 @@ if __name__ == '__main__':
     with futures.ThreadPoolExecutor() as daily_executor:
         daily_executor.map(database.update_daily_bars, memsql_stock_info_list)
 
-    print(f'Total time for updating: {datetime.datetime.now() - start_time}')
+    print(f'Total time for updating: {datetime.now() - start_time}')

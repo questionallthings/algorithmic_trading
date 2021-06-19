@@ -1,7 +1,7 @@
 # Imports
 from argparse import ArgumentParser, RawTextHelpFormatter
 from concurrent import futures
-import datetime
+from datetime import datetime, timedelta
 import sys
 import os
 import math
@@ -13,15 +13,15 @@ from itertools import repeat
 
 import alpaca_trade_api
 import pandas as pd
+import pymysql
 
-import stock_data_manager
 import strategies
+import db_manager
 
 
 stock_data = {}
 stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
-stock_list_file = 'stock_list.txt'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
 
@@ -88,41 +88,55 @@ def set_parser():
                         timeframe=timeframe_options[2],
                         manage=money_management_options[1],
                         strategy=strategy_options[0],
-                        close_min=5,
-                        close_max=200,
+                        close_min=1,
+                        close_max=5,
                         avg_30_volume=1000000,
                         quote_type='EQUITY')
 
     return parser.parse_args()
 
 
-def filter_stock_list(filter_options):
-    print(f'{datetime.datetime.now()} :: Importing stock data files.')
-    stock_data_manager.import_data(stock_data, filter_options)
-    print(f'{datetime.datetime.now()} :: Imported {len(stock_data)} files.')
-    with open(stock_list_file) as file:
-        ticker_data = json.load(file)
-    for each_ticker in ticker_data:
-        if each_ticker['symbol'] in stock_data:
-            stock_data[each_ticker['symbol']].quote_type = each_ticker['quoteType']
+def filter_stock_list(sql_server, filter_options):
+    print(f'{datetime.now()} :: Importing stock data files.')
+    stock_list = []
+    with sql_server.cursor() as filter_query:
+        filter_query.execute(f'SELECT symbol FROM daily_bars '
+                             f'WHERE date BETWEEN \'{datetime.strftime(datetime.today() - timedelta(days=5), "%Y-%m-%d")}\' '
+                             f'AND \'{datetime.strftime(datetime.today() - timedelta(days=1), "%Y-%m-%d")}\' '
+                             f'AND close BETWEEN {filter_options.close_min} AND {filter_options.close_max} '
+                             f'GROUP BY symbol HAVING AVG(volume) > {filter_options.avg_30_volume}')
+        filter_query_results = filter_query.fetchall()
+    for each_stock in filter_query_results:
+        if each_stock['symbol'] in stock_data:
+            stock_list.append(each_stock['symbol'])
+    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}', sql_server)
+    sql_grouped_df = sql_df.groupby('symbol')
+    for each_stock in stock_list:
+        if len(sql_grouped_df.get_group(each_stock)) > 400:
+            stock_data[each_stock].stock_data = sql_grouped_df.get_group(each_stock)
+            stock_data[each_stock].stock_data.set_index('date', inplace=True)
+            stock_data[each_stock].stock_data.sort_index(inplace=True)
+            stock_data[each_stock].stock_data.drop(columns='symbol')
+            stock_data[each_stock].stock_data.loc[:, 'strategy'] = False
+            stock_data[each_stock].stock_data.loc[:, 'backtest_profit'] = 0.0
+            stock_data[each_stock].stock_data.loc[:, 'buy_price'] = 0.0
+            stock_data[each_stock].stock_data.loc[:, 'sell_price'] = 0.0
+            stock_data[each_stock].stock_data.loc[:, 'risk'] = 0.0
+            stock_data[each_stock].stock_data.loc[:, 'reward'] = 0.0
     for key, value in list(stock_data.items()):
-        if (len(value.stock_data.volume) > 730) and \
-                (value.stock_data.volume.iloc[-31:-1].min() < filter_options.avg_30_volume) or \
-                (value.stock_data.close.iloc[-1] > filter_options.close_max) or \
-                (value.stock_data.close.iloc[-1] < filter_options.close_min) or \
-                (value.quote_type != 'EQUITY'):
+        if len(stock_data[key].stock_data) < 400:
             del stock_data[key]
 
 
 def run_backtest(strategy_stock_data):
-    print(f'{datetime.datetime.now()} :: Saving backtest results.')
+    print(f'{datetime.now()} :: Saving backtest results.')
     strategy_stock_data.to_csv(path_or_buf=f'backtest_results/{strategy_stock_data.symbol.iloc[-1]}_backtest.csv',
                                na_rep='n/a',
                                index=False)
 
 
 def test_strategy(strategy_stock_data):
-    print(f'{datetime.datetime.now()} :: Displaying finance chart window.')
+    print(f'{datetime.now()} :: Displaying finance chart window.')
     mpf.plot(strategy_stock_data,
              type='candle',
              warn_too_much_data=1000000)
@@ -151,7 +165,7 @@ def order(stock_data_order):
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
-        # '''
+        '''
         trade_api.submit_order(symbol=stock_data_order.symbol,
                                side='buy',
                                type='stop',
@@ -162,27 +176,38 @@ def order(stock_data_order):
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
-        # '''
+        '''
 
 
 def main():
-    print(f'{datetime.datetime.now()} :: Starting')
+    print(f'{datetime.now()} :: Starting')
     arguments = set_parser()
     if arguments.run == 'update':
-        print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
+        print(f'{datetime.now()} :: Running {arguments.run}.')
         #stock_data_manager.update_stock_list(trade_api.list_assets())
-        stock_data_manager.update_data(arguments)
-        print(f'Program took {datetime.datetime.now() - start_time} to run.')
+        #stock_data_manager.update_data(arguments)
+        print(f'Program took {datetime.now() - start_time} to run.')
         sys.exit()
     else:
-        for each_stock in os.listdir(stock_files_directory):
-            stock_data[each_stock.split('_')[0]] = StockData()
-        print(f'{datetime.datetime.now()} :: Using the following arguments: {arguments}.')
-        print(f'{datetime.datetime.now()} :: Running {arguments.run}.')
-        filter_stock_list(arguments)
-        print(f'{datetime.datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
+        database = db_manager.Database()
+        memsql_server = pymysql.connect(host=database.memsql_host,
+                                        user=database.memsql_user,
+                                        password=database.memsql_password,
+                                        port=int(database.memsql_port),
+                                        database=database.database_name,
+                                        cursorclass=pymysql.cursors.DictCursor)
+        with memsql_server.cursor() as db_query:
+            db_query.execute('SELECT symbol, quoteType FROM stock_info')
+            memsql_stock_list_result = db_query.fetchall()
+        for each_stock in memsql_stock_list_result:
+            if each_stock['quoteType'] == arguments.quote_type:
+                stock_data[each_stock['symbol']] = StockData()
+        print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
+        print(f'{datetime.now()} :: Running {arguments.run}.')
+        filter_stock_list(memsql_server, arguments)
+        print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
         run_strategy(arguments.strategy, arguments)
-        print(f'{datetime.datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
+        print(f'{datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
               f'{len(stock_data)} stock(s).')
         if arguments.run == 'backtest':
             for each_stock in stock_data:
@@ -195,6 +220,6 @@ def main():
 
 
 if __name__ == "__main__":
-    start_time = datetime.datetime.now()
+    start_time = datetime.now()
     main()
-    print(f'Program took {datetime.datetime.now() - start_time} to complete.')
+    print(f'Program took {datetime.now() - start_time} to complete.')
