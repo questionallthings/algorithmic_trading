@@ -52,7 +52,7 @@ class Database:
 
     def update_daily_bars(self, stock):
         yahoo_query_data = yq.Ticker(stock)
-        daily_stock_data = yahoo_query_data.history(period='max',
+        daily_stock_data = yahoo_query_data.history(period='1mo',
                                                     interval='1d').round(4)
         sql_server = pymysql.connect(host=self.memsql_host,
                                      user=self.memsql_user,
@@ -107,13 +107,13 @@ if __name__ == '__main__':
         memsql_stock_info_list.append(each['SYMBOL'])
 
     # # # UPDATING STOCK INFO
-    #for each in tradeable_assets:
-    #    alpaca_tradeable_assets.append(each.symbol)
-    #for each_stock in alpaca_tradeable_assets:
-    #    if each_stock not in memsql_stock_info_list:
-    #        stock_info_update_list.append(each_stock)
-    #with futures.ThreadPoolExecutor() as info_executor:
-    #    info_executor.map(database.update_stock_info, stock_info_update_list)
+    for each in tradeable_assets:
+        alpaca_tradeable_assets.append(each.symbol)
+    for each_stock in alpaca_tradeable_assets:
+        if each_stock not in memsql_stock_info_list:
+            stock_info_update_list.append(each_stock)
+    with futures.ThreadPoolExecutor() as info_executor:
+        info_executor.map(database.update_stock_info, stock_info_update_list)
 
     # # # UPDATING DAILY BARS
     with futures.ThreadPoolExecutor() as daily_executor:
