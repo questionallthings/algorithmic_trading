@@ -2,14 +2,9 @@
 from argparse import ArgumentParser, RawTextHelpFormatter
 from concurrent import futures
 from datetime import datetime, timedelta
-import sys
-import os
-import math
-import matplotlib.pyplot as plt
 import mplfinance as mpf
-import numpy as np
-import json
 from itertools import repeat
+import math
 
 import alpaca_trade_api
 import pandas as pd
@@ -38,8 +33,7 @@ class StockData:
 
 
 def set_parser():
-    run_options = ['update',
-                   'backtest',
+    run_options = ['backtest',
                    'strategy',
                    'live']
     strategy_options = ['stochastic_supertrend',
@@ -101,7 +95,8 @@ def filter_stock_list(sql_server, filter_options):
     stock_list = []
     with sql_server.cursor() as filter_query:
         filter_query.execute(f'SELECT symbol FROM daily_bars '
-                             f'WHERE date BETWEEN \'{datetime.strftime(datetime.today() - timedelta(days=5), "%Y-%m-%d")}\' '
+                             f'WHERE date BETWEEN '
+                             f'\'{datetime.strftime(datetime.today() - timedelta(days=5), "%Y-%m-%d")}\' '
                              f'AND \'{datetime.strftime(datetime.today() - timedelta(days=1), "%Y-%m-%d")}\' '
                              f'AND close BETWEEN {filter_options.close_min} AND {filter_options.close_max} '
                              f'GROUP BY symbol HAVING AVG(volume) > {filter_options.avg_30_volume}')
@@ -165,7 +160,7 @@ def order(stock_data_order):
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
-        '''
+        # '''
         trade_api.submit_order(symbol=stock_data_order.symbol,
                                side='buy',
                                type='stop',
@@ -176,47 +171,40 @@ def order(stock_data_order):
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
-        '''
+        # '''
 
 
 def main():
     print(f'{datetime.now()} :: Starting')
     arguments = set_parser()
-    if arguments.run == 'update':
-        print(f'{datetime.now()} :: Running {arguments.run}.')
-        #stock_data_manager.update_stock_list(trade_api.list_assets())
-        #stock_data_manager.update_data(arguments)
-        print(f'Program took {datetime.now() - start_time} to run.')
-        sys.exit()
-    else:
-        database = db_manager.Database()
-        memsql_server = pymysql.connect(host=database.memsql_host,
-                                        user=database.memsql_user,
-                                        password=database.memsql_password,
-                                        port=int(database.memsql_port),
-                                        database=database.database_name,
-                                        cursorclass=pymysql.cursors.DictCursor)
-        with memsql_server.cursor() as db_query:
-            db_query.execute('SELECT symbol, quoteType FROM stock_info')
-            memsql_stock_list_result = db_query.fetchall()
-        for each_stock in memsql_stock_list_result:
-            if each_stock['quoteType'] == arguments.quote_type:
-                stock_data[each_stock['symbol']] = StockData()
-        print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
-        print(f'{datetime.now()} :: Running {arguments.run}.')
-        filter_stock_list(memsql_server, arguments)
-        print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
-        run_strategy(arguments.strategy, arguments)
-        print(f'{datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
-              f'{len(stock_data)} stock(s).')
-        if arguments.run == 'backtest':
-            for each_stock in stock_data:
-                run_backtest(stock_data[each_stock].stock_data)
-        elif arguments.run == 'strategy':
-            test_strategy(stock_data['HPQ'].stock_data)  # HPQ is used due to largest set of stock data
-        elif arguments.run == 'live':
-            for each_stock in stock_data:
-                order(stock_data[each_stock].stock_data.iloc[-1])
+    database = db_manager.Database()
+    memsql_server = pymysql.connect(host=database.memsql_host,
+                                    user=database.memsql_user,
+                                    password=database.memsql_password,
+                                    port=int(database.memsql_port),
+                                    database=database.database_name,
+                                    cursorclass=pymysql.cursors.DictCursor)
+    with memsql_server.cursor() as db_query:
+        db_query.execute('SELECT symbol, quoteType FROM stock_info')
+        memsql_stock_list_result = db_query.fetchall()
+    for each_stock in memsql_stock_list_result:
+        if each_stock['quoteType'] == arguments.quote_type:
+            stock_data[each_stock['symbol']] = StockData()
+    print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
+    print(f'{datetime.now()} :: Running {arguments.run}.')
+    filter_stock_list(memsql_server, arguments)
+    print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
+    run_strategy(arguments.strategy, arguments)
+    print(f'{datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
+          f'{len(stock_data)} stock(s).')
+    if arguments.run == 'backtest':
+        for each_stock in stock_data:
+            run_backtest(stock_data[each_stock].stock_data)
+    elif arguments.run == 'strategy':
+        test_strategy(stock_data['HPQ'].stock_data)  # HPQ is used due to largest set of stock data
+    elif arguments.run == 'live':
+        for each_stock in stock_data:
+            order(stock_data[each_stock].stock_data.iloc[-1])
 
 
 if __name__ == "__main__":
