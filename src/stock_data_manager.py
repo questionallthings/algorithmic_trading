@@ -1,5 +1,7 @@
 from concurrent import futures
 from itertools import repeat
+import os
+import pymysql
 import yahooquery as yq
 import pandas as pd
 import json
@@ -8,11 +10,6 @@ import db_manager
 
 stock_files_directory = 'stocks/'
 stock_list_file = 'stock_list.txt'
-
-
-def update_database(data):
-    db = db_manager.Database()
-    db.update_tables(data)
 
 
 def import_stock_data(stock_name, arguments):
@@ -44,52 +41,32 @@ def import_data(stock_data, arguments):
 def update_stock_data(stock, arguments):
     yahoo_query_data = yq.Ticker(stock)
     daily_stock_data = yahoo_query_data.history(period=arguments.period,
-                                                interval=arguments.timeframe)
+                                                interval=arguments.timeframe).round(4)
     print(f'{datetime.datetime.now()} :: Updating {stock} historical stock data.')
     daily_stock_data.reset_index(level=[0, 1], inplace=True)
     daily_stock_data.set_index('date', inplace=True)
-    print(daily_stock_data)
-    update_database(daily_stock_data)
     daily_stock_data.to_csv(path_or_buf=f'{stock_files_directory}{stock}_{arguments.timeframe}_stock_data.txt')
 
 
 def update_data(arguments):
     update_list = []
+    memsql_host = os.environ['memsql_ip']
+    memsql_port = os.environ['memsql_port']
+    memsql_user = os.environ['memsql_user']
+    memsql_password = os.environ['memsql_password']
+    database_name = 'stock_data'
+    memsql_server = pymysql.connect(host=memsql_host,
+                                    user=memsql_user,
+                                    password=memsql_password,
+                                    port=int(memsql_port),
+                                    database=database_name,
+                                    cursorclass=pymysql.cursors.DictCursor)
+
+    with memsql_server.cursor() as db_query:
+        db_query.execute('SELECT SYMBOL FROM stock_info')
+        memsql_stock_list_result = db_query.fetchall()
     print(f'{datetime.datetime.now()} :: Updating historical stock data.')
-    with open(stock_list_file) as file:
-        ticker_data = json.load(file)
-    for each_ticker in ticker_data:
-        update_list.append(each_ticker['symbol'])
+    for each_ticker in memsql_stock_list_result:
+        update_list.append(each_ticker['SYMBOL'])
     with futures.ThreadPoolExecutor() as update_executor:
         update_executor.map(update_stock_data, update_list, repeat(arguments))
-
-
-def update_stock_list_data(stock):
-    print(f'{datetime.datetime.now()} :: Acquiring finance data for {stock}.')
-    yahoo_query_data = yq.Ticker(stock)
-    stock_info_data = yahoo_query_data.quote_type
-
-    return stock_info_data
-
-
-def update_stock_list(api):
-    yq_stock_data_results = []
-    alpaca_tradeable_assets = []
-    new_stock_data = []
-    print(f'{datetime.datetime.now()} :: Updating stock list file.')
-    print(f'{datetime.datetime.now()} :: Acquiring list of tradeable assets.')
-    for each in api:
-        alpaca_tradeable_assets.append(each.symbol)
-    print(f'{datetime.datetime.now()} :: Querying finance data on {len(alpaca_tradeable_assets)} assets.')
-    with futures.ThreadPoolExecutor() as update_executor:
-        for each_stock, update_list_results in zip(alpaca_tradeable_assets,
-                                                   update_executor.map(update_stock_list_data,
-                                                                       alpaca_tradeable_assets)):
-            yq_stock_data_results.append(update_list_results)
-    with open(stock_list_file, 'w') as file:
-        for each_ticker in yq_stock_data_results:
-            for each_value in each_ticker.values():
-                if ('exchange' in each_value) and (each_value['exchange'] is not None):
-                    new_stock_data.append(each_value)
-        print(f'{datetime.datetime.now()} :: Writing found finance data for {len(new_stock_data)} assets.')
-        file.writelines(json.dumps(new_stock_data))
