@@ -77,7 +77,7 @@ def set_parser():
                                help='Average volume over 30 days.')
     filter_parser.add_argument('-quote_type', dest='quote_type', type=str,
                                help='What type of stock to filter for.')
-    parser.set_defaults(run=run_options[3],
+    parser.set_defaults(run=run_options[1],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[1],
@@ -109,9 +109,10 @@ def filter_stock_list(sql_server, filter_options):
     for each_stock in stock_list:
         if len(sql_grouped_df.get_group(each_stock)) > 400:
             stock_data[each_stock].stock_data = sql_grouped_df.get_group(each_stock)
-            stock_data[each_stock].stock_data.set_index('date', inplace=True)
+            stock_data[each_stock].stock_data.set_index(pd.to_datetime(stock_data[each_stock].stock_data.date),
+                                                        inplace=True)
             stock_data[each_stock].stock_data.sort_index(inplace=True)
-            stock_data[each_stock].stock_data.drop(columns='symbol')
+            stock_data[each_stock].stock_data.drop(columns='symbol', inplace=True)
             stock_data[each_stock].stock_data.loc[:, 'strategy'] = False
             stock_data[each_stock].stock_data.loc[:, 'backtest_profit'] = 0.0
             stock_data[each_stock].stock_data.loc[:, 'buy_price'] = 0.0
@@ -130,9 +131,14 @@ def run_backtest(strategy_stock_data):
                                index=False)
 
 
-def test_strategy(strategy_stock_data):
+def test_strategy(sql_server, stock):
+    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol=\'{stock}\'', sql_server)
+    sql_df.set_index(pd.to_datetime(sql_df.date), inplace=True)
+    sql_df.sort_index(inplace=True)
+    sql_df.drop(columns='symbol', inplace=True)
+
     print(f'{datetime.now()} :: Displaying finance chart window.')
-    mpf.plot(strategy_stock_data,
+    mpf.plot(sql_df[-400:],
              type='candle',
              warn_too_much_data=1000000)
 
@@ -184,27 +190,28 @@ def main():
                                     port=int(database.memsql_port),
                                     database=database.database_name,
                                     cursorclass=pymysql.cursors.DictCursor)
-    with memsql_server.cursor() as db_query:
-        db_query.execute('SELECT symbol, quoteType FROM stock_info')
-        memsql_stock_list_result = db_query.fetchall()
-    for each_stock in memsql_stock_list_result:
-        if each_stock['quoteType'] == arguments.quote_type:
-            stock_data[each_stock['symbol']] = StockData()
-    print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
-    print(f'{datetime.now()} :: Running {arguments.run}.')
-    filter_stock_list(memsql_server, arguments)
-    print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
-    run_strategy(arguments.strategy, arguments)
-    print(f'{datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
-          f'{len(stock_data)} stock(s).')
-    if arguments.run == 'backtest':
-        for each_stock in stock_data:
-            run_backtest(stock_data[each_stock].stock_data)
-    elif arguments.run == 'strategy':
-        test_strategy(stock_data['HPQ'].stock_data)  # HPQ is used due to largest set of stock data
-    elif arguments.run == 'live':
-        for each_stock in stock_data:
-            order(stock_data[each_stock].stock_data.iloc[-1])
+    if arguments.run == 'strategy':
+        test_strategy(memsql_server, 'HPQ')  # HPQ is used due to largest set of stock data
+    else:
+        with memsql_server.cursor() as db_query:
+            db_query.execute('SELECT symbol, quoteType FROM stock_info')
+            memsql_stock_list_result = db_query.fetchall()
+        for each_stock in memsql_stock_list_result:
+            if each_stock['quoteType'] == arguments.quote_type:
+                stock_data[each_stock['symbol']] = StockData()
+        print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
+        print(f'{datetime.now()} :: Running {arguments.run}.')
+        filter_stock_list(memsql_server, arguments)
+        print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
+        run_strategy(arguments.strategy, arguments)
+        print(f'{datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
+              f'{len(stock_data)} stock(s).')
+        if arguments.run == 'backtest':
+            for each_stock in stock_data:
+                run_backtest(stock_data[each_stock].stock_data)
+        elif arguments.run == 'live':
+            for each_stock in stock_data:
+                order(stock_data[each_stock].stock_data.iloc[-1])
 
 
 if __name__ == "__main__":

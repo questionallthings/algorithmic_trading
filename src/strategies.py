@@ -80,24 +80,17 @@ def stochastic_supertrend(stock, arguments):
     return stock[1].stock_data
 
 
-def mtf_ema_macd(stock, arguments):
+def rsi_stochastic_200ema(stock, arguments):
     pass
     '''
-    multitimeframe_ema (hourly, 50 period)
-                       (15 min, 50 period)
-    macd (default)
-    
     long
-    15 > hourly
-    price highs go lower
-    macd lows go higher
-    macd between lows don't cross above histogram 0
-    entry first macd cross up
+    close above 200 ema
+    rsi for divergence
+    price higher lows
+    rsi lower low
+    next cross up on stoch is entry
     risk is nearest swing low
-    reward 2x risk
-    
-    short
-    opposite above    
+    reward is 2x risk
     '''
 
 
