@@ -26,10 +26,18 @@ pd.set_option('max_rows', 999)
 pd.set_option('display.expand_frame_repr', False)
 
 
-class StockData:
-    def __init__(self):
-        self.stock_data = ''
-        self.quote_type = ''
+class Stock:
+    def __init__(self, data=None, info=None):
+        self.data = data
+        self.info = info
+
+    def set_data(self):
+        self.data.loc[:, 'strategy'] = False
+        self.data.loc[:, 'backtest_profit'] = 0.0
+        self.data.loc[:, 'buy_price'] = 0.0
+        self.data.loc[:, 'sell_price'] = 0.0
+        self.data.loc[:, 'risk'] = 0.0
+        self.data.loc[:, 'reward'] = 0.0
 
 
 def set_parser():
@@ -50,6 +58,9 @@ def set_parser():
     timeframe_options = ['5m',
                          '60m',
                          '1d']
+    type_options = ['ALL',
+                    'EQUITY',
+                    'ETF']
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
     subparsers = parser.add_subparsers()
     parser.add_argument('-r', '--run', choices=run_options,
@@ -75,25 +86,26 @@ def set_parser():
                                help='Maximum current closing value.')
     filter_parser.add_argument('-avg_30', dest='avg_30_volume', type=int,
                                help='Average volume over 30 days.')
-    filter_parser.add_argument('-quote_type', dest='quote_type', type=str,
-                               help='What type of stock to filter for.')
+    filter_parser.add_argument('-quote_type', '--quote_type', choices=type_options,
+                               help='\n'.join(f'{type_item}' for type_item in type_options),
+                               metavar='Q')
     parser.set_defaults(run=run_options[1],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[1],
                         strategy=strategy_options[0],
-                        close_min=1,
-                        close_max=5,
+                        close_min=3,
+                        close_max=4,
                         avg_30_volume=1000000,
-                        quote_type='EQUITY')
+                        quote_type=type_options[1])
 
     return parser.parse_args()
 
 
-def filter_stock_list(sql_server, filter_options):
-    print(f'{datetime.now()} :: Importing stock data files.')
+def import_filter_stocks(connection, filter_options):
+    print(f'{datetime.now()} :: Importing stock data.')
     stock_list = []
-    with sql_server.cursor() as filter_query:
+    with connection.cursor() as filter_query:
         filter_query.execute(f'SELECT symbol FROM daily_bars '
                              f'WHERE date BETWEEN '
                              f'\'{datetime.strftime(datetime.today() - timedelta(days=5), "%Y-%m-%d")}\' '
@@ -104,24 +116,18 @@ def filter_stock_list(sql_server, filter_options):
     for each_stock in filter_query_results:
         if each_stock['symbol'] in stock_data:
             stock_list.append(each_stock['symbol'])
-    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}', sql_server)
-    sql_grouped_df = sql_df.groupby('symbol')
-    for each_stock in stock_list:
-        if len(sql_grouped_df.get_group(each_stock)) > 400:
-            stock_data[each_stock].stock_data = sql_grouped_df.get_group(each_stock)
-            stock_data[each_stock].stock_data.set_index(pd.to_datetime(stock_data[each_stock].stock_data.date),
-                                                        inplace=True)
-            stock_data[each_stock].stock_data.sort_index(inplace=True)
-            stock_data[each_stock].stock_data.drop(columns='symbol', inplace=True)
-            stock_data[each_stock].stock_data.loc[:, 'strategy'] = False
-            stock_data[each_stock].stock_data.loc[:, 'backtest_profit'] = 0.0
-            stock_data[each_stock].stock_data.loc[:, 'buy_price'] = 0.0
-            stock_data[each_stock].stock_data.loc[:, 'sell_price'] = 0.0
-            stock_data[each_stock].stock_data.loc[:, 'risk'] = 0.0
-            stock_data[each_stock].stock_data.loc[:, 'reward'] = 0.0
-    for key, value in list(stock_data.items()):
-        if len(stock_data[key].stock_data) < 400:
-            del stock_data[key]
+    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}', connection)
+    sql_grouped_df = list(sql_df.groupby('symbol'))
+    for each_stock in sql_grouped_df:
+        if len(each_stock[1]) > 400:
+            stock_data[each_stock[0]].data = each_stock[1]
+            stock_data[each_stock[0]].data.set_index('date', inplace=True)
+            stock_data[each_stock[0]].data.sort_index(inplace=True)
+            stock_data[each_stock[0]].data.drop(columns='symbol', inplace=True)
+            stock_data[each_stock[0]].set_data()
+    for each_key in list(stock_data):
+        if stock_data[each_key].data is None or len(stock_data[each_key].data) < 400:
+            del(stock_data[each_key])
 
 
 def run_backtest(strategy_stock_data):
@@ -131,12 +137,16 @@ def run_backtest(strategy_stock_data):
                                index=False)
 
 
-def test_strategy(sql_server, stock):
-    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol=\'{stock}\'', sql_server)
+def test_strategy(connection, stock, strategy, arguments):
+    print(f'{datetime.now()} :: Importing test stock data.')
+    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol=\'{stock}\'', connection)
     sql_df.set_index(pd.to_datetime(sql_df.date), inplace=True)
     sql_df.sort_index(inplace=True)
     sql_df.drop(columns='symbol', inplace=True)
-
+    stock_df = Stock(data=sql_df)
+    stock_df.set_data()
+    strategy_df = getattr(strategies, strategy)((stock, stock_df), arguments)
+    print(strategy_df.tail())
     print(f'{datetime.now()} :: Displaying finance chart window.')
     mpf.plot(sql_df[-400:],
              type='candle',
@@ -149,12 +159,12 @@ def run_strategy(strategy, arguments):
                                                   indicator_executor.map(getattr(strategies, strategy),
                                                                          stock_data.items(),
                                                                          repeat(arguments))):
-            stock_data[each_stock].stock_data = stock_list_results
+            stock_data[each_stock].data = stock_list_results
     if arguments.run == 'live':
         for each_stock, value in list(stock_data.items()):
-            if not stock_data[each_stock].stock_data.strategy.iloc[-1] or \
-                    stock_data[each_stock].stock_data.risk.iloc[-1] == 0.0 or \
-                    stock_data[each_stock].stock_data.reward.iloc[-1] == 0.0:
+            if not stock_data[each_stock].data.strategy.iloc[-1] or \
+                    stock_data[each_stock].data.risk.iloc[-1] == 0.0 or \
+                    stock_data[each_stock].data.reward.iloc[-1] == 0.0:
                 del stock_data[each_stock]
 
 
@@ -183,6 +193,7 @@ def order(stock_data_order):
 def main():
     print(f'{datetime.now()} :: Starting')
     arguments = set_parser()
+    print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
     database = db_manager.Database()
     memsql_server = pymysql.connect(host=database.memsql_host,
                                     user=database.memsql_user,
@@ -191,27 +202,32 @@ def main():
                                     database=database.database_name,
                                     cursorclass=pymysql.cursors.DictCursor)
     if arguments.run == 'strategy':
-        test_strategy(memsql_server, 'HPQ')  # HPQ is used due to largest set of stock data
+        test_strategy(connection=memsql_server,
+                      stock='HPQ',
+                      strategy=arguments.strategy,
+                      arguments=arguments)  # HPQ is used due to largest set
     else:
         with memsql_server.cursor() as db_query:
-            db_query.execute('SELECT symbol, quoteType FROM stock_info')
+            db_query.execute('SELECT * FROM stock_info')
             memsql_stock_list_result = db_query.fetchall()
-        for each_stock in memsql_stock_list_result:
-            if each_stock['quoteType'] == arguments.quote_type:
-                stock_data[each_stock['symbol']] = StockData()
-        print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
+        for each_result in memsql_stock_list_result:
+            stock_data[each_result['symbol']] = Stock(info=each_result)
+        if arguments.quote_type != 'ALL':
+            for each_stock, value in list(stock_data.items()):
+                if stock_data[each_stock].info['quoteType'] != arguments.quote_type:
+                    del stock_data[each_stock]
         print(f'{datetime.now()} :: Running {arguments.run}.')
-        filter_stock_list(memsql_server, arguments)
+        import_filter_stocks(memsql_server, arguments)
         print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
         run_strategy(arguments.strategy, arguments)
         print(f'{datetime.now()} :: Strategy \'{arguments.strategy}\' filtered list down to '
               f'{len(stock_data)} stock(s).')
         if arguments.run == 'backtest':
             for each_stock in stock_data:
-                run_backtest(stock_data[each_stock].stock_data)
+                run_backtest(stock_data[each_stock].data)
         elif arguments.run == 'live':
             for each_stock in stock_data:
-                order(stock_data[each_stock].stock_data.iloc[-1])
+                order(stock_data[each_stock].data.iloc[-1])
 
 
 if __name__ == "__main__":
