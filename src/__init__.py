@@ -92,13 +92,13 @@ def set_parser():
     filter_parser.add_argument('-quote_type', '--quote_type', choices=type_options,
                                help='\n'.join(f'{type_item}' for type_item in type_options),
                                metavar='Q')
-    parser.set_defaults(run=run_options[2],
+    parser.set_defaults(run=run_options[0],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[2],
                         strategy=strategy_options[0],
-                        close_min=1,
-                        close_max=5,
+                        close_min=5,
+                        close_max=100,
                         avg_30_volume=1000000,
                         quote_type=type_options[1])
 
