@@ -1,12 +1,15 @@
 # Imports
+import sys
 from argparse import ArgumentParser, RawTextHelpFormatter
 from concurrent import futures
 from datetime import datetime, timedelta
 import mplfinance as mpf
 from itertools import repeat
 import math
+import re
 
 import alpaca_trade_api
+import numpy as np
 import pandas as pd
 import pymysql
 
@@ -34,16 +37,16 @@ class Stock:
     def set_data(self):
         self.data.loc[:, 'strategy'] = False
         self.data.loc[:, 'backtest_profit'] = 0.0
-        self.data.loc[:, 'buy_price'] = 0.0
-        self.data.loc[:, 'sell_price'] = 0.0
+        self.data.loc[:, 'buy_price'] = np.nan
+        self.data.loc[:, 'sell_price'] = np.nan
         self.data.loc[:, 'risk'] = 0.0
         self.data.loc[:, 'reward'] = 0.0
 
 
 def set_parser():
-    run_options = ['backtest',
-                   'strategy',
-                   'live']
+    run_options = ['live',
+                   'backtest',
+                   'strategy']
     strategy_options = ['stochastic_supertrend',
                         'rsi_stochastic_200ema']
     money_management_options = ['ratio_1_1',
@@ -89,13 +92,13 @@ def set_parser():
     filter_parser.add_argument('-quote_type', '--quote_type', choices=type_options,
                                help='\n'.join(f'{type_item}' for type_item in type_options),
                                metavar='Q')
-    parser.set_defaults(run=run_options[1],
+    parser.set_defaults(run=run_options[2],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
-                        manage=money_management_options[1],
+                        manage=money_management_options[2],
                         strategy=strategy_options[0],
-                        close_min=3,
-                        close_max=4,
+                        close_min=1,
+                        close_max=5,
                         avg_30_volume=1000000,
                         quote_type=type_options[1])
 
@@ -121,7 +124,7 @@ def import_filter_stocks(connection, filter_options):
     for each_stock in sql_grouped_df:
         if len(each_stock[1]) > 400:
             stock_data[each_stock[0]].data = each_stock[1]
-            stock_data[each_stock[0]].data.set_index('date', inplace=True)
+            stock_data[each_stock[0]].data.set_index(pd.to_datetime(stock_data[each_stock[0]].data.date), inplace=True)
             stock_data[each_stock[0]].data.sort_index(inplace=True)
             stock_data[each_stock[0]].data.drop(columns='symbol', inplace=True)
             stock_data[each_stock[0]].set_data()
@@ -145,12 +148,37 @@ def test_strategy(connection, stock, strategy, arguments):
     sql_df.drop(columns='symbol', inplace=True)
     stock_df = Stock(data=sql_df)
     stock_df.set_data()
-    strategy_df = getattr(strategies, strategy)((stock, stock_df), arguments)
-    print(strategy_df.tail())
-    print(f'{datetime.now()} :: Displaying finance chart window.')
-    mpf.plot(sql_df[-400:],
+    stock_df.data = getattr(strategies, strategy)((stock, stock_df), arguments)
+    mpf_display_count = 0
+    add_plot_indicators = []
+    for each_column in stock_df.data.columns:
+        if re.match('^EMA', each_column):
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:]))
+        elif re.match('^SUPERT', each_column):
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['SUPERT_7_3.0'][-mpf_display_count:]))
+        elif each_column == 'buy_price':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
+                                                        type='scatter',
+                                                        markersize=200,
+                                                        marker='^'))
+        elif each_column == 'sell_price':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['sell_price'][-mpf_display_count:] * 1.01,
+                                                        type='scatter',
+                                                        markersize=200,
+                                                        marker='v'))
+        elif re.match('^STOCHRSI', each_column):
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
+        elif each_column == 'backtest_profit':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=3))
+    mpf_colors = mpf.make_marketcolors(up='g', down='r', volume='in', edge='k')
+    mpf_style = mpf.make_mpf_style(marketcolors=mpf_colors)
+    mpf.plot(data=stock_df.data[-mpf_display_count:],
+             style=mpf_style,
              type='candle',
-             warn_too_much_data=1000000)
+             addplot=add_plot_indicators,
+             volume=True,
+             warn_too_much_data=1000000000)
 
 
 def run_strategy(strategy, arguments):
@@ -168,16 +196,21 @@ def run_strategy(strategy, arguments):
                 del stock_data[each_stock]
 
 
-def order(stock_data_order):
-    test = trade_api.get_last_trade(symbol=stock_data_order.symbol)
+def order(stock_data_order, symbol):
+    test = trade_api.get_last_trade(symbol=symbol)
+    print(f'Stock - {symbol} :: '
+          f'Risk - {stock_data_order.risk} :: '
+          f'Price - {stock_data_order.buy_price} :: '
+          f'Last Trade - {test.price}:: '
+          f'Reward - {stock_data_order.reward}')
     if stock_data_order.buy_price >= test.price > stock_data_order.risk:
-        print(f'Stock - {stock_data_order.symbol} :: '
+        print(f'Stock - {symbol} :: '
               f'Risk - {stock_data_order.risk} :: '
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
-        # '''
-        trade_api.submit_order(symbol=stock_data_order.symbol,
+        '''
+        trade_api.submit_order(symbol=symbol,
                                side='buy',
                                type='stop',
                                stop_price=stock_data_order.buy_price,
@@ -187,7 +220,7 @@ def order(stock_data_order):
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
-        # '''
+        '''
 
 
 def main():
@@ -227,7 +260,8 @@ def main():
                 run_backtest(stock_data[each_stock].data)
         elif arguments.run == 'live':
             for each_stock in stock_data:
-                order(stock_data[each_stock].data.iloc[-1])
+                if stock_data[each_stock].data.buy_price.iloc[-1] > 0:
+                    order(stock_data[each_stock].data.iloc[-1], each_stock)
 
 
 if __name__ == "__main__":
