@@ -92,7 +92,7 @@ def set_parser():
     filter_parser.add_argument('-quote_type', '--quote_type', choices=type_options,
                                help='\n'.join(f'{type_item}' for type_item in type_options),
                                metavar='Q')
-    parser.set_defaults(run=run_options[0],
+    parser.set_defaults(run=run_options[2],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[2],
@@ -150,6 +150,7 @@ def test_strategy(connection, stock, strategy, arguments):
     stock_df.set_data()
     stock_df.data = getattr(strategies, strategy)((stock, stock_df), arguments)
     mpf_display_count = 0
+    print(stock_df.data)
     add_plot_indicators = []
     for each_column in stock_df.data.columns:
         if re.match('^EMA', each_column):
@@ -178,7 +179,8 @@ def test_strategy(connection, stock, strategy, arguments):
              type='candle',
              addplot=add_plot_indicators,
              volume=True,
-             warn_too_much_data=1000000000)
+             warn_too_much_data=1000000000,
+             title=f'{stock}')
 
 
 def run_strategy(strategy, arguments):
