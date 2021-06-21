@@ -95,3 +95,26 @@ def rsi_stochastic_200ema(stock, arguments):
     '''
 
 
+def ichimoku(stock, arguments):
+    test = stock[1].data.ta.ichimoku(append=True)
+    stock[1].data = stock[1].data.append(test[1])
+    '''
+    isa_9 = leading span a
+    isb_26 = leading span b
+    its_9 = conversion line
+    iks_26 = base line
+    ics_26 = lagging span
+    
+    isa_9 and isb_26 make the cloud
+    isa_9 above isb_26 green cloud
+    isa_9 below isb_26 red cloud
+    
+    long
+    price close above the cloud
+    must see green cloud ahead
+    lagging span above cloud
+    conversion line above base line
+    risk base line
+    reward 2x
+    '''
+    return stock[1].data
