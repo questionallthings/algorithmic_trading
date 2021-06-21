@@ -151,13 +151,13 @@ def test_strategy(connection, stock, strategy, arguments):
     stock_df.set_data()
     stock_df.data = getattr(strategies, strategy)((stock, stock_df), arguments)
     mpf_display_count = 200
-    print(stock_df.data)
+    print(stock_df.data.tail(80))
     add_plot_indicators = []
     for each_column in stock_df.data.columns:
         if re.match('^EMA', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:]))
-        #elif re.match('^SUPERT', each_column):
-        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['SUPERT_7_3.0'][-mpf_display_count:]))
+        elif re.match('^SUPERT', each_column):
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['SUPERT_7_3.0'][-mpf_display_count:]))
         #elif each_column == 'buy_price':
         #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
         #                                                type='scatter',
@@ -168,10 +168,10 @@ def test_strategy(connection, stock, strategy, arguments):
         #                                                type='scatter',
         #                                                markersize=200,
         #                                                marker='v'))
-        #elif re.match('^STOCHRSI', each_column):
-        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
-        #elif each_column == 'backtest_profit':
-        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=3))
+        elif re.match('^STOCHRSI', each_column):
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
+        elif each_column == 'backtest_profit':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
         elif each_column == 'ISA_9':
             stock_df.data['ISA_9'].fillna(0.0, inplace=True)
             stock_df.data['ISB_26'].fillna(0.0, inplace=True)
@@ -180,7 +180,7 @@ def test_strategy(connection, stock, strategy, arguments):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['IKS_26'][-mpf_display_count:],
                                                         color='r', width=0.8, alpha=0.75))
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['ICS_26'][-mpf_display_count:],
-                                                        color='pink', linestyle='dotted', width=0.4))
+                                                        color='black', linestyle='dotted', width=1))
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['ISA_9'][-mpf_display_count:],
                                                         color='y', width=0.5, alpha=0.5))
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['ISB_26'][-mpf_display_count:],

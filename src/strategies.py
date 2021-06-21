@@ -96,8 +96,24 @@ def rsi_stochastic_200ema(stock, arguments):
 
 
 def ichimoku(stock, arguments):
-    test = stock[1].data.ta.ichimoku(append=True)
-    stock[1].data = stock[1].data.append(test[1])
+    bought_price = 0.0
+    ichimoku_df = stock[1].data.ta.ichimoku(append=True)
+    stock[1].data = stock[1].data.append(ichimoku_df[1])
+    stock[1].data.drop(columns='date', inplace=True)
+    for i in range(-len(stock[1].data) + 300, -26):
+        stock[1].data.backtest_profit.iat[i] = stock[1].data.backtest_profit.iloc[i - 1]
+        if bought_price != 0.0:
+            pass
+        else:
+            if (stock[1].data.close.iloc[i] > stock[1].data.ISA_9.iloc[i]) and \
+                    (stock[1].data.close.iloc[i] > stock[1].data.ISB_26.iloc[i]) and \
+                    (stock[1].data.ISA_9.iloc[i + 26] > stock[1].data.ISB_26.iloc[i + 26]) and \
+                    (stock[1].data.ICS_26.iloc[i - 26] > stock[1].data.ISA_9.iloc[i - 26]) and \
+                    (stock[1].data.ICS_26.iloc[i - 26] > stock[1].data.ISB_26.iloc[i - 26]) and \
+                    (stock[1].data.ITS_9.iloc[i] > stock[1].data.IKS_26.iloc[i]):
+                bought_price = stock[1].data.close.iloc[i]
+                stock[1].data.risk.iat[i] = stock[1].data.IKS_26.iloc[i]
+                stock[1].data.reward.iat[i] = (3 * bought_price) - (2 * stock[1].data.risk.iloc[i])
     '''
     isa_9 = leading span a
     isb_26 = leading span b
