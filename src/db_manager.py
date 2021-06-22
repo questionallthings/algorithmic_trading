@@ -65,19 +65,24 @@ class Database:
         daily_stock_data.fillna('NULL')
         columns = daily_stock_data.columns
         for each_date in daily_stock_data.index:
-            query_text = f'INSERT INTO daily_bars (date, '
-            for each_column in columns[:-1]:
-                query_text += f'{each_column}, '
-            query_text += f'{columns[-1]}) VALUES (\'{datetime.strftime(each_date, "%Y-%m-%d")}\', '
-            for each_column in columns[:-1]:
-                if each_column == 'symbol':
-                    query_text += f'\'{daily_stock_data.loc[each_date].loc[each_column]}\', '
-                else:
-                    query_text += f'{daily_stock_data.loc[each_date].loc[each_column]}, '
-            query_text += f'{daily_stock_data.loc[each_date].loc[columns[-1]]})'
-            print(query_text)
-            with sql_server.cursor() as daily_bars_post:
-                daily_bars_post.execute(f'{query_text}')
+            try:
+                query_text = f'INSERT INTO daily_bars (date, '
+                for each_column in columns[:-1]:
+                    query_text += f'{each_column}, '
+                query_text += f'{columns[-1]}) VALUES (\'{datetime.strftime(each_date, "%Y-%m-%d")}\', '
+                for each_column in columns[:-1]:
+                    if each_column == 'symbol':
+                        query_text += f'\'{daily_stock_data.loc[each_date].loc[each_column]}\', '
+                    else:
+                        query_text += f'{daily_stock_data.loc[each_date].loc[each_column]}, '
+                query_text += f'{daily_stock_data.loc[each_date].loc[columns[-1]]})'
+                print(query_text)
+                with sql_server.cursor() as daily_bars_post:
+                    daily_bars_post.execute(f'{query_text}')
+                    results = daily_bars_post.fetchall()
+                    print(results)
+            except:
+                pass
         sql_server.commit()
 
     def update_minute_bars(self, stock):

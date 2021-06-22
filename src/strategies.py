@@ -103,15 +103,33 @@ def ichimoku(stock, arguments):
     for i in range(-len(stock[1].data) + 300, -26):
         stock[1].data.backtest_profit.iat[i] = stock[1].data.backtest_profit.iloc[i - 1]
         if bought_price != 0.0:
-            pass
+            stock[1].data.risk.iat[i] = stock[1].data.risk.iloc[i - 1]
+            stock[1].data.reward.iat[i] = stock[1].data.reward.iloc[i - 1]
+            if stock[1].data.low.iloc[i] < stock[1].data.risk.iloc[i]:
+                stock[1].data.sell_price.iat[i] = stock[1].data.risk.iloc[i]
+                stock[1].data.backtest_profit.iat[i] -= bought_price - \
+                    stock[1].data.sell_price.iloc[i]
+                stock[1].data.risk.iat[i] = 0.0
+                stock[1].data.reward.iat[i] = 0.0
+                bought_price = 0.0
+            elif stock[1].data.high.iloc[i] > stock[1].data.reward.iloc[i]:
+                stock[1].data.sell_price.iat[i] = stock[1].data.reward.iloc[i]
+                stock[1].data.backtest_profit.iat[i] -= bought_price - \
+                    stock[1].data.sell_price.iloc[i]
+                stock[1].data.risk.iat[i] = 0.0
+                stock[1].data.reward.iat[i] = 0.0
+                bought_price = 0.0
         else:
             if (stock[1].data.close.iloc[i] > stock[1].data.ISA_9.iloc[i]) and \
                     (stock[1].data.close.iloc[i] > stock[1].data.ISB_26.iloc[i]) and \
                     (stock[1].data.ISA_9.iloc[i + 26] > stock[1].data.ISB_26.iloc[i + 26]) and \
                     (stock[1].data.ICS_26.iloc[i - 26] > stock[1].data.ISA_9.iloc[i - 26]) and \
                     (stock[1].data.ICS_26.iloc[i - 26] > stock[1].data.ISB_26.iloc[i - 26]) and \
-                    (stock[1].data.ITS_9.iloc[i] > stock[1].data.IKS_26.iloc[i]):
+                    (stock[1].data.ITS_9.iloc[i] > stock[1].data.IKS_26.iloc[i]) and \
+                    bought_price == 0.0:
+                stock[1].data.strategy.iat[i] = True
                 bought_price = stock[1].data.close.iloc[i]
+                stock[1].data.buy_price.iat[i] = bought_price
                 stock[1].data.risk.iat[i] = stock[1].data.IKS_26.iloc[i]
                 stock[1].data.reward.iat[i] = (3 * bought_price) - (2 * stock[1].data.risk.iloc[i])
     '''

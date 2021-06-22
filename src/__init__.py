@@ -93,13 +93,13 @@ def set_parser():
     filter_parser.add_argument('-quote_type', '--quote_type', choices=type_options,
                                help='\n'.join(f'{type_item}' for type_item in type_options),
                                metavar='Q')
-    parser.set_defaults(run=run_options[2],
+    parser.set_defaults(run=run_options[0],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
                         manage=money_management_options[2],
                         strategy=strategy_options[2],
-                        close_min=5,
-                        close_max=100,
+                        close_min=1,
+                        close_max=5,
                         avg_30_volume=1000000,
                         quote_type=type_options[1])
 
@@ -158,16 +158,16 @@ def test_strategy(connection, stock, strategy, arguments):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:]))
         elif re.match('^SUPERT', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['SUPERT_7_3.0'][-mpf_display_count:]))
-        #elif each_column == 'buy_price':
-        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
-        #                                                type='scatter',
-        #                                                markersize=200,
-        #                                                marker='^'))
-        #elif each_column == 'sell_price':
-        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['sell_price'][-mpf_display_count:] * 1.01,
-        #                                                type='scatter',
-        #                                                markersize=200,
-        #                                                marker='v'))
+        elif each_column == 'buy_price':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
+                                                        type='scatter',
+                                                        markersize=200,
+                                                        marker='^'))
+        elif each_column == 'sell_price':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['sell_price'][-mpf_display_count:] * 1.01,
+                                                        type='scatter',
+                                                        markersize=200,
+                                                        marker='v'))
         elif re.match('^STOCHRSI', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
         elif each_column == 'backtest_profit':
@@ -249,7 +249,7 @@ def main():
                                     cursorclass=pymysql.cursors.DictCursor)
     if arguments.run == 'strategy':
         test_strategy(connection=memsql_server,
-                      stock='ABEV',
+                      stock='HPQ',
                       strategy=arguments.strategy,
                       arguments=arguments)  # HPQ is used due to largest set
     else:
@@ -273,6 +273,7 @@ def main():
                 run_backtest(stock_data[each_stock].data)
         elif arguments.run == 'live':
             for each_stock in stock_data:
+                print(datetime.today() - timedelta(days=1))
                 if stock_data[each_stock].data.buy_price.iloc[-1] > 0:
                     order(stock_data[each_stock].data.iloc[-1], each_stock)
 
