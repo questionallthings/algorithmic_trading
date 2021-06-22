@@ -273,9 +273,8 @@ def main():
                 run_backtest(stock_data[each_stock].data)
         elif arguments.run == 'live':
             for each_stock in stock_data:
-                print(datetime.today() - timedelta(days=1))
-                if stock_data[each_stock].data.buy_price.iloc[-1] > 0:
-                    order(stock_data[each_stock].data.iloc[-1], each_stock)
+                if stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() - timedelta(days=1), '%Y-%m-%d')] > 0:
+                    order(stock_data[each_stock].data.loc[datetime.strftime(datetime.today() - timedelta(days=1), '%Y-%m-%d')], each_stock)
 
 
 if __name__ == "__main__":
