@@ -104,7 +104,7 @@ class Database:
                 query_text = f'INSERT INTO minute_bars (date, '
                 for each_column in columns[:-1]:
                     query_text += f'{each_column}, '
-                query_text += f'{columns[-1]}) VALUES (\'{datetime.strftime(each_date, "%Y-%m-%d")}\', '
+                query_text += f'{columns[-1]}) VALUES (\'{datetime.strftime(each_date, "%Y-%m-%d %H:%M:%S")}\', '
                 for each_column in columns[:-1]:
                     if each_column == 'symbol':
                         query_text += f'\'{minute_stock_data.loc[each_date].loc[each_column]}\', '
@@ -144,17 +144,17 @@ if __name__ == '__main__':
         memsql_stock_info_list.append(each['symbol'])
 
     # # # UPDATING STOCK INFO
-    #for each in tradeable_assets:
-    #    alpaca_tradeable_assets.append(each.symbol)
-    #for each_stock in alpaca_tradeable_assets:
-    #    if each_stock not in memsql_stock_info_list:
-    #        stock_info_update_list.append(each_stock)
-    #with futures.ThreadPoolExecutor() as info_executor:
-    #    info_executor.map(database.update_stock_info, stock_info_update_list)
+    for each in tradeable_assets:
+        alpaca_tradeable_assets.append(each.symbol)
+    for each_stock in alpaca_tradeable_assets:
+        if each_stock not in memsql_stock_info_list:
+            stock_info_update_list.append(each_stock)
+    with futures.ThreadPoolExecutor() as info_executor:
+        info_executor.map(database.update_stock_info, stock_info_update_list)
 
     # # # UPDATING DAILY BARS
-    #with futures.ThreadPoolExecutor() as daily_executor:
-    #    daily_executor.map(database.update_daily_bars, memsql_stock_info_list)
+    with futures.ThreadPoolExecutor() as daily_executor:
+        daily_executor.map(database.update_daily_bars, memsql_stock_info_list)
 
     # # # UPDATING MINUTE BARS
     with futures.ThreadPoolExecutor() as daily_executor:
