@@ -15,6 +15,7 @@ import pymysql
 
 import strategies
 import db_manager
+import alpaca_socket_manager
 
 
 stock_data = {}
@@ -50,12 +51,6 @@ def set_parser():
     strategy_options = ['stochastic_supertrend',
                         'rsi_stochastic_200ema',
                         'ichimoku']
-    money_management_options = ['ratio_1_1',
-                                'ratio_1_1.5',
-                                'ratio_1_2',
-                                'take_profit_1_1',
-                                'take_profit_1_1.5',
-                                'take_profit_1_2']
     period_options = ['1mo',
                       '1y',
                       'max']
@@ -70,9 +65,6 @@ def set_parser():
     parser.add_argument('-r', '--run', choices=run_options,
                         help='\n'.join(f'{run_item}' for run_item in run_options),
                         metavar='R')
-    parser.add_argument('-m', '--manage', choices=money_management_options,
-                        help='\n'.join(f'{manage_item}' for manage_item in money_management_options),
-                        metavar='M')
     parser.add_argument('-s', '--strategy', choices=strategy_options,
                         help='\n'.join(f'{strategy_item}' for strategy_item in strategy_options),
                         metavar='S')
@@ -96,10 +88,9 @@ def set_parser():
     parser.set_defaults(run=run_options[0],
                         period=period_options[2],
                         timeframe=timeframe_options[2],
-                        manage=money_management_options[2],
                         strategy=strategy_options[2],
                         close_min=1,
-                        close_max=5,
+                        close_max=2,
                         avg_30_volume=1000000,
                         quote_type=type_options[1])
 
@@ -228,7 +219,7 @@ def order(stock_data_order, symbol):
                                type='stop',
                                stop_price=stock_data_order.buy_price,
                                qty=math.floor((float(account.cash) * .01) / stock_data_order.buy_price),
-                               time_in_force='gtc',
+                               time_in_force='day',
                                order_class='bracket',
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
@@ -272,9 +263,17 @@ def main():
             for each_stock in stock_data:
                 run_backtest(stock_data[each_stock].data)
         elif arguments.run == 'live':
+            orders = []
+            current_orders = trade_api.list_orders()
+            for each_order in current_orders:
+                orders.append(each_order.symbol)
             for each_stock in stock_data:
-                if stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() - timedelta(days=1), '%Y-%m-%d')] > 0:
-                    order(stock_data[each_stock].data.loc[datetime.strftime(datetime.today() - timedelta(days=1), '%Y-%m-%d')], each_stock)
+                if (stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() - timedelta(days=1),
+                                                                                '%Y-%m-%d')] > 0) and \
+                        (each_stock not in orders):
+                    order(stock_data[each_stock].data.loc[datetime.strftime(datetime.today() - timedelta(days=1),
+                                                                            '%Y-%m-%d')], each_stock)
+            alpaca_socket_manager.alpaca_socket()
 
 
 if __name__ == "__main__":
