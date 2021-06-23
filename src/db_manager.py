@@ -52,7 +52,7 @@ class Database:
 
     def update_daily_bars(self, stock):
         yahoo_query_data = yq.Ticker(stock)
-        daily_stock_data = yahoo_query_data.history(period='1mo',
+        daily_stock_data = yahoo_query_data.history(period='7d',
                                                     interval='1d').round(4)
         sql_server = pymysql.connect(host=self.memsql_host,
                                      user=self.memsql_user,
