@@ -34,6 +34,7 @@ class Stock:
     def __init__(self, data=None, info=None):
         self.data = data
         self.info = info
+        self.minutes = ''
 
     def set_data(self):
         self.data.loc[:, 'strategy'] = False
@@ -90,7 +91,7 @@ def set_parser():
                         timeframe=timeframe_options[2],
                         strategy=strategy_options[2],
                         close_min=1,
-                        close_max=2,
+                        close_max=100,
                         avg_30_volume=1000000,
                         quote_type=type_options[1])
 
@@ -206,6 +207,7 @@ def run_strategy(strategy, arguments):
 
 
 def order(stock_data_order, symbol):
+    order_status = False
     test = trade_api.get_last_trade(symbol=symbol)
     if stock_data_order.buy_price >= test.price > stock_data_order.risk:
         print(f'Stock - {symbol} :: '
@@ -225,6 +227,8 @@ def order(stock_data_order, symbol):
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
         '''
+
+    return order_status
 
 
 def main():
@@ -267,13 +271,20 @@ def main():
             current_orders = trade_api.list_orders()
             for each_order in current_orders:
                 orders.append(each_order.symbol)
-            for each_stock in stock_data:
+            for each_stock in list(stock_data.keys()):
+                order_status = False
                 if (stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() - timedelta(days=1),
                                                                                 '%Y-%m-%d')] > 0) and \
                         (each_stock not in orders):
-                    order(stock_data[each_stock].data.loc[datetime.strftime(datetime.today() - timedelta(days=1),
-                                                                            '%Y-%m-%d')], each_stock)
-            alpaca_socket_manager.alpaca_socket()
+                    order_status = order(stock_data[each_stock].data.loc[datetime.strftime(datetime.today() -
+                                                                                           timedelta(days=1),
+                                                                                           '%Y-%m-%d')], each_stock)
+                elif each_stock in orders:
+                    order_status = True
+                if not order_status:
+                    del stock_data[each_stock]
+            alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
+            alpaca_socket_run.alpaca_socket()
 
 
 if __name__ == "__main__":
