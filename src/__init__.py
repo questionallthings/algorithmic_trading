@@ -1,5 +1,4 @@
 # Imports
-import sys
 from argparse import ArgumentParser, RawTextHelpFormatter
 from concurrent import futures
 from datetime import datetime, timedelta
@@ -231,7 +230,8 @@ def order(stock_data_order, symbol):
     return order_status
 
 
-def main():
+if __name__ == "__main__":
+    start_time = datetime.now()
     print(f'{datetime.now()} :: Starting')
     arguments = set_parser()
     print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
@@ -286,8 +286,4 @@ def main():
             alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
             alpaca_socket_run.alpaca_socket()
 
-
-if __name__ == "__main__":
-    start_time = datetime.now()
-    main()
     print(f'Program took {datetime.now() - start_time} to complete.')
