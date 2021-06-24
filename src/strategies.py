@@ -126,6 +126,7 @@ def ichimoku(stock, arguments):
                     (stock[1].data.ICS_26.iloc[i - 26] > stock[1].data.ISA_9.iloc[i - 26]) and \
                     (stock[1].data.ICS_26.iloc[i - 26] > stock[1].data.ISB_26.iloc[i - 26]) and \
                     (stock[1].data.ITS_9.iloc[i] > stock[1].data.IKS_26.iloc[i]) and \
+                    (stock[1].data.close.iloc[i] > stock[1].data.IKS_26.iloc[i]) and \
                     bought_price == 0.0:
                 stock[1].data.strategy.iat[i] = True
                 bought_price = stock[1].data.close.iloc[i]
