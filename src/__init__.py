@@ -173,12 +173,6 @@ def order(stock_data_order, symbol):
     status = False
     last_trade = trade_api.get_last_trade(symbol=symbol)
     if stock_data_order.buy_price >= last_trade.price > stock_data_order.risk:
-        print(f'Stock - {symbol} :: '
-              f'Risk - {stock_data_order.risk} :: '
-              f'Price - {stock_data_order.buy_price} :: '
-              f'Last Trade - {last_trade.price} :: '
-              f'Reward - {stock_data_order.reward} :: '
-              f'Volume - {stock_data_order.volume}')
         order_results = trade_api.submit_order(symbol=symbol,
                                                side='buy',
                                                type='stop',
