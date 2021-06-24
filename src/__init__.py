@@ -175,8 +175,8 @@ def order(stock_data_order, symbol):
         print(f'Stock - {symbol} :: '
               f'Risk - {stock_data_order.risk} :: '
               f'Price - {stock_data_order.buy_price} :: '
-              f'Last Trade - {last_trade.price}:: '
-              f'Reward - {stock_data_order.reward}'
+              f'Last Trade - {last_trade.price} :: '
+              f'Reward - {stock_data_order.reward} :: '
               f'Volume - {stock_data_order.volume}')
         order_results = trade_api.submit_order(symbol=symbol,
                                                side='buy',
