@@ -1,5 +1,4 @@
 # Imports
-from argparse import ArgumentParser, RawTextHelpFormatter
 from concurrent import futures
 from datetime import datetime, timedelta
 import mplfinance as mpf
@@ -176,19 +175,17 @@ def order(stock_data_order, symbol):
               f'Price - {stock_data_order.buy_price} :: '
               f'Last Trade - {test.price}:: '
               f'Reward - {stock_data_order.reward}')
-        '''
         trade_api.submit_order(symbol=symbol,
                                side='buy',
                                type='stop',
                                stop_price=stock_data_order.buy_price,
                                qty=math.floor((float(account.cash) * .01) / (stock_data_order.buy_price - 
                                                                              stock_data_order.risk)),
-                               time_in_force='day',
+                               time_in_force='gtc',
                                order_class='bracket',
                                take_profit=dict(limit_price=stock_data_order.reward),
                                stop_loss=dict(stop_price=stock_data_order.risk,
                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
-        '''
 
     return status
 
