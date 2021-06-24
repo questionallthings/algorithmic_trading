@@ -21,6 +21,7 @@ stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
+strategy_test_stock = 'HPQ'
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
@@ -38,9 +39,10 @@ arguments = {'run': run_options[0],
              'timeframe': timeframe_options[2],
              'strategy': strategy_options[2],
              'close_min': 1,
-             'close_max': 100,
+             'close_max': 200,
              'avg_30_volume': 1000000,
-             'quote_type': type_options[1]}
+             'quote_type': type_options[1],
+             'trade_cash_risk': 100}
 
 
 class Stock:
@@ -64,7 +66,7 @@ def import_filter_stocks(connection):
     with connection.cursor() as filter_query:
         filter_query.execute(f'SELECT symbol FROM daily_bars '
                              f'WHERE date BETWEEN '
-                             f'\'{datetime.strftime(datetime.today() - timedelta(days=5), "%Y-%m-%d")}\' '
+                             f'\'{datetime.strftime(datetime.today() - timedelta(days=30), "%Y-%m-%d")}\' '
                              f'AND \'{datetime.strftime(datetime.today() - timedelta(days=1), "%Y-%m-%d")}\' '
                              f'AND close BETWEEN {arguments["close_min"]} AND {arguments["close_max"]} '
                              f'GROUP BY symbol HAVING AVG(volume) > {arguments["avg_30_volume"]}')
@@ -168,23 +170,28 @@ def run_strategy(strategy):
 
 def order(stock_data_order, symbol):
     status = False
-    test = trade_api.get_last_trade(symbol=symbol)
-    if stock_data_order.buy_price >= test.price > stock_data_order.risk:
+    last_trade = trade_api.get_last_trade(symbol=symbol)
+    if stock_data_order.buy_price >= last_trade.price > stock_data_order.risk:
         print(f'Stock - {symbol} :: '
               f'Risk - {stock_data_order.risk} :: '
               f'Price - {stock_data_order.buy_price} :: '
-              f'Last Trade - {test.price}:: '
-              f'Reward - {stock_data_order.reward}')
-        trade_api.submit_order(symbol=symbol,
-                               side='buy',
-                               type='stop',
-                               stop_price=stock_data_order.buy_price,
-                               qty=math.floor(10 / (stock_data_order.buy_price - stock_data_order.risk)),
-                               time_in_force='gtc',
-                               order_class='bracket',
-                               take_profit=dict(limit_price=stock_data_order.reward),
-                               stop_loss=dict(stop_price=stock_data_order.risk,
-                                              limit_price=str(round(stock_data_order.risk * .99, 2))))
+              f'Last Trade - {last_trade.price}:: '
+              f'Reward - {stock_data_order.reward}'
+              f'Volume - {stock_data_order.volume}')
+        order_results = trade_api.submit_order(symbol=symbol,
+                                               side='buy',
+                                               type='stop',
+                                               stop_price=stock_data_order.buy_price,
+                                               qty=math.floor(arguments['trade_cash_risk'] /
+                                                              (stock_data_order.buy_price -
+                                                               stock_data_order.risk)),
+                                               time_in_force='gtc',
+                                               order_class='bracket',
+                                               take_profit=dict(limit_price=stock_data_order.reward),
+                                               stop_loss=dict(stop_price=stock_data_order.risk,
+                                                              limit_price=str(round(stock_data_order.risk * .99, 2))))
+        if order_results.status == 'accepted':
+            status = True
 
     return status
 
@@ -202,7 +209,7 @@ if __name__ == "__main__":
                                     cursorclass=pymysql.cursors.DictCursor)
     if arguments['run'] == 'strategy':
         test_strategy(connection=memsql_server,
-                      stock='HPQ',
+                      stock=strategy_test_stock,
                       strategy=arguments['strategy'])  # HPQ is used due to largest set
     else:
         with memsql_server.cursor() as db_query:
@@ -230,9 +237,10 @@ if __name__ == "__main__":
                 orders.append(each_order.symbol)
             for each_stock in list(stock_data.keys()):
                 order_status = False
-                if (stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() - timedelta(days=1),
-                                                                                '%Y-%m-%d')] > 0) and \
-                        (each_stock not in orders):
+                if (each_stock not in orders) and \
+                        (stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() -
+                                                                                     timedelta(days=1),
+                                                                                     '%Y-%m-%d')] > 0):
                     order_status = order(stock_data[each_stock].data.loc[datetime.strftime(datetime.today() -
                                                                                            timedelta(days=1),
                                                                                            '%Y-%m-%d')], each_stock)
