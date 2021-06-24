@@ -71,18 +71,19 @@ def import_filter_stocks(connection):
                              f'AND close BETWEEN {arguments["close_min"]} AND {arguments["close_max"]} '
                              f'GROUP BY symbol HAVING AVG(volume) > {arguments["avg_30_volume"]}')
         filter_query_results = filter_query.fetchall()
-    for each_stock in filter_query_results:
-        if each_stock['symbol'] in stock_data:
-            stock_list.append(each_stock['symbol'])
+    for filter_stock in filter_query_results:
+        if filter_stock['symbol'] in stock_data:
+            stock_list.append(filter_stock['symbol'])
     sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}', connection)
     sql_grouped_df = list(sql_df.groupby('symbol'))
-    for each_stock in sql_grouped_df:
-        if len(each_stock[1]) > 400:
-            stock_data[each_stock[0]].data = each_stock[1]
-            stock_data[each_stock[0]].data.set_index(pd.to_datetime(stock_data[each_stock[0]].data.date), inplace=True)
-            stock_data[each_stock[0]].data.sort_index(inplace=True)
-            stock_data[each_stock[0]].data.drop(columns='symbol', inplace=True)
-            stock_data[each_stock[0]].set_data()
+    for sql_group_stock in sql_grouped_df:
+        if len(sql_group_stock[1]) > 400:
+            stock_data[sql_group_stock[0]].data = sql_group_stock[1]
+            stock_data[sql_group_stock[0]].data.set_index(pd.to_datetime(stock_data[sql_group_stock[0]].data.date),
+                                                          inplace=True)
+            stock_data[sql_group_stock[0]].data.sort_index(inplace=True)
+            stock_data[sql_group_stock[0]].data.drop(columns='symbol', inplace=True)
+            stock_data[sql_group_stock[0]].set_data()
     for each_key in list(stock_data):
         if stock_data[each_key].data is None or len(stock_data[each_key].data) < 400:
             del(stock_data[each_key])
@@ -155,17 +156,17 @@ def test_strategy(connection, stock, strategy):
 
 def run_strategy(strategy):
     with futures.ProcessPoolExecutor(max_workers=2) as indicator_executor:
-        for each_stock, stock_list_results in zip(stock_data,
-                                                  indicator_executor.map(getattr(strategies, strategy),
-                                                                         stock_data.items(),
-                                                                         repeat(arguments))):
-            stock_data[each_stock].data = stock_list_results
+        for each_symbol, stock_list_results in zip(stock_data,
+                                                   indicator_executor.map(getattr(strategies, strategy),
+                                                                          stock_data.items(),
+                                                                          repeat(arguments))):
+            stock_data[each_symbol].data = stock_list_results
     if arguments['run'] == 'live':
-        for each_stock, value in list(stock_data.items()):
-            if not stock_data[each_stock].data.strategy.iloc[-1] or \
-                    stock_data[each_stock].data.risk.iloc[-1] == 0.0 or \
-                    stock_data[each_stock].data.reward.iloc[-1] == 0.0:
-                del stock_data[each_stock]
+        for each_symbol in list(stock_data.keys()):
+            if not stock_data[each_symbol].data.strategy.iloc[-1] or \
+                    stock_data[each_symbol].data.risk.iloc[-1] == 0.0 or \
+                    stock_data[each_symbol].data.reward.iloc[-1] == 0.0:
+                del stock_data[each_symbol]
 
 
 def order(stock_data_order, symbol):
@@ -192,6 +193,12 @@ def order(stock_data_order, symbol):
                                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
         if order_results.status == 'accepted':
             status = True
+            print({'symbol': symbol,
+                   'quantity': order_results.qty,
+                   'price': order_results.price,
+                   'risk': order_results.risk,
+                   'reward': order_results.reward,
+                   'volume': stock_data_order.volume})
 
     return status
 
@@ -223,7 +230,7 @@ if __name__ == "__main__":
                     del stock_data[each_stock]
         print(f'{datetime.now()} :: Running {arguments["run"]}.')
         import_filter_stocks(memsql_server)
-        print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stocks.')
+        print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stock(s).')
         run_strategy(arguments['strategy'])
         print(f'{datetime.now()} :: Strategy \'{arguments["strategy"]}\' filtered list down to '
               f'{len(stock_data)} stock(s).')
@@ -248,6 +255,7 @@ if __name__ == "__main__":
                     order_status = True
                 if not order_status:
                     del stock_data[each_stock]
+            print(f'Monitoring from stream {len(stock_data)} stock(s).')
             alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
             alpaca_socket_run.alpaca_socket()
 
