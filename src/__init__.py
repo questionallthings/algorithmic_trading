@@ -195,9 +195,9 @@ def order(stock_data_order, symbol):
             status = True
             print({'symbol': symbol,
                    'quantity': order_results.qty,
-                   'price': order_results.price,
-                   'risk': order_results.risk,
-                   'reward': order_results.reward,
+                   'price': round(stock_data_order.buy_price, 4),
+                   'risk': round(stock_data_order.buy_price - stock_data_order.risk, 4),
+                   'reward': round(stock_data_order.reward - stock_data_order.buy_price, 4),
                    'volume': stock_data_order.volume})
 
     return status
