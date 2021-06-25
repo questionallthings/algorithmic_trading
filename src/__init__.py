@@ -14,6 +14,7 @@ import pymysql
 import strategies
 import db_manager
 import alpaca_socket_manager
+import backtest
 
 
 stock_data = {}
@@ -21,7 +22,7 @@ stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
-strategy_test_stock = 'HPQ'
+strategy_test_stock = 'HPQ'  # HPQ is used due to largest set
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
@@ -34,12 +35,12 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[0],
+arguments = {'run': run_options[1],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
              'strategy': strategy_options[2],
              'close_min': 1,
-             'close_max': 200,
+             'close_max': 5,
              'avg_30_volume': 1000000,
              'quote_type': type_options[1],
              'trade_cash_risk': 100}
@@ -105,8 +106,8 @@ def test_strategy(connection, stock, strategy):
     stock_df = Stock(data=sql_df)
     stock_df.set_data()
     stock_df.data = getattr(strategies, strategy)((stock, stock_df), arguments)
-    mpf_display_count = 200
-    print(stock_df.data.tail(80))
+    mpf_display_count = 0
+    print(stock_df.data)
     add_plot_indicators = []
     for each_column in stock_df.data.columns:
         if re.match('^EMA', each_column):
@@ -211,7 +212,7 @@ if __name__ == "__main__":
     if arguments['run'] == 'strategy':
         test_strategy(connection=memsql_server,
                       stock=strategy_test_stock,
-                      strategy=arguments['strategy'])  # HPQ is used due to largest set
+                      strategy=arguments['strategy'])
     else:
         with memsql_server.cursor() as db_query:
             db_query.execute('SELECT * FROM stock_info')
@@ -229,8 +230,7 @@ if __name__ == "__main__":
         print(f'{datetime.now()} :: Strategy \'{arguments["strategy"]}\' filtered list down to '
               f'{len(stock_data)} stock(s).')
         if arguments['run'] == 'backtest':
-            for each_stock in stock_data:
-                run_backtest(stock_data[each_stock].data)
+            backtest.run_backtest(stock_data)
         elif arguments['run'] == 'live':
             orders = []
             current_orders = trade_api.list_orders()
