@@ -15,9 +15,9 @@ class Strategy:
         self.symbol = stock_data[0]
         self.data = stock_data[1].data
         self.arguments = arguments
+        self.bought_price = 0.0
 
     def stochastic_supertrend(self):
-        bought_price = 0.0
         self.data.ta.ema(length=200, append=True)
         if self.arguments['run'] == 'live' and self.data.EMA_200.iloc[-1] > self.data.close.iloc[-1]:
             return self.data
@@ -27,27 +27,27 @@ class Strategy:
         self.data.ta.stochrsi(append=True)
         for i in range(-len(self.data) + 300, 0):
             self.data.backtest_profit.iat[i] = self.data.backtest_profit.iloc[i - 1]
-            if bought_price != 0.0:
+            if self.bought_price != 0.0:
                 self.data.risk.iat[i] = self.data.risk.iloc[i - 1]
                 self.data.reward.iat[i] = self.data.reward.iloc[i - 1]
                 if self.data.low.iloc[i] < self.data.risk.iloc[i]:
                     self.data.sell_price.iat[i] = self.data.risk.iloc[i]
-                    self.data.backtest_profit.iat[i] -= bought_price - self.data.sell_price.iloc[i]
+                    self.data.backtest_profit.iat[i] -= self.bought_price - self.data.sell_price.iloc[i]
                     self.data.risk.iat[i] = 0.0
                     self.data.reward.iat[i] = 0.0
-                    bought_price = 0.0
+                    self.bought_price = 0.0
                 elif self.data.high.iloc[i] > self.data.reward.iloc[i]:
                     self.data.sell_price.iat[i] = self.data.reward.iloc[i]
-                    self.data.backtest_profit.iat[i] -= bought_price - self.data.sell_price.iloc[i]
+                    self.data.backtest_profit.iat[i] -= self.bought_price - self.data.sell_price.iloc[i]
                     self.data.risk.iat[i] = 0.0
                     self.data.reward.iat[i] = 0.0
-                    bought_price = 0.0
+                    self.bought_price = 0.0
                 elif self.data['SUPERTd_7_3.0'].iloc[i] < 1:
                     self.data.sell_price.iat[i] = self.data.close.iloc[i]
-                    self.data.backtest_profit.iat[i] -= bought_price - self.data.sell_price.iloc[i]
+                    self.data.backtest_profit.iat[i] -= self.bought_price - self.data.sell_price.iloc[i]
                     self.data.risk.iat[i] = 0.0
                     self.data.reward.iat[i] = 0.0
-                    bought_price = 0.0
+                    self.bought_price = 0.0
             else:
                 # Cross Up w/ Strategy
                 if (self.data.STOCHRSIk_14_14_3_3.iloc[i] - self.data.STOCHRSId_14_14_3_3.iloc[i] >
@@ -58,10 +58,10 @@ class Strategy:
                         and (self.data.STOCHRSId_14_14_3_3.iloc[i] < 50) \
                         and (self.data.STOCHRSIk_14_14_3_3.iloc[i] < 50):
                     self.data.strategy.iat[i] = True
-                    bought_price = self.data.close.iloc[i]
-                    self.data.buy_price.iat[i] = bought_price
+                    self.bought_price = self.data.close.iloc[i]
+                    self.data.buy_price.iat[i] = self.bought_price
                     self.data.risk.iat[i] = self.data.risk.iloc[i - 1]
-                    self.data.reward.iat[i] = (2.5 * bought_price) - (1.5 * self.data.risk.iloc[i])
+                    self.data.reward.iat[i] = (2.5 * self.bought_price) - (1.5 * self.data.risk.iloc[i])
                 # Cross Up w/o Strategy
                 elif (self.data.STOCHRSIk_14_14_3_3.iloc[i] - self.data.STOCHRSId_14_14_3_3.iloc[i] >
                       0.0 >
@@ -88,27 +88,26 @@ class Strategy:
         return self.data
 
     def ichimoku(self):
-        bought_price = 0.0
         ichimoku_df = self.data.ta.ichimoku(append=True)
         self.data = self.data.append(ichimoku_df[1])
         self.data.drop(columns='date', inplace=True)
         for i in range(-len(self.data) + 300, -26):
             self.data.backtest_profit.iat[i] = self.data.backtest_profit.iloc[i - 1]
-            if bought_price != 0.0:
+            if self.bought_price != 0.0:
                 self.data.risk.iat[i] = self.data.risk.iloc[i - 1]
                 self.data.reward.iat[i] = self.data.reward.iloc[i - 1]
                 if self.data.low.iloc[i] < self.data.risk.iloc[i]:
                     self.data.sell_price.iat[i] = self.data.risk.iloc[i]
-                    self.data.backtest_profit.iat[i] -= bought_price - self.data.sell_price.iloc[i]
+                    self.data.backtest_profit.iat[i] -= self.bought_price - self.data.sell_price.iloc[i]
                     self.data.risk.iat[i] = 0.0
                     self.data.reward.iat[i] = 0.0
-                    bought_price = 0.0
+                    self.bought_price = 0.0
                 elif self.data.high.iloc[i] > self.data.reward.iloc[i]:
                     self.data.sell_price.iat[i] = self.data.reward.iloc[i]
-                    self.data.backtest_profit.iat[i] -= bought_price - self.data.sell_price.iloc[i]
+                    self.data.backtest_profit.iat[i] -= self.bought_price - self.data.sell_price.iloc[i]
                     self.data.risk.iat[i] = 0.0
                     self.data.reward.iat[i] = 0.0
-                    bought_price = 0.0
+                    self.bought_price = 0.0
             else:
                 if (self.data.close.iloc[i] > self.data.ISA_9.iloc[i]) and \
                         (self.data.close.iloc[i] > self.data.ISB_26.iloc[i]) and \
@@ -117,12 +116,12 @@ class Strategy:
                         (self.data.ICS_26.iloc[i - 26] > self.data.ISB_26.iloc[i - 26]) and \
                         (self.data.ITS_9.iloc[i] > self.data.IKS_26.iloc[i]) and \
                         (self.data.close.iloc[i] > self.data.IKS_26.iloc[i]) and \
-                        bought_price == 0.0:
+                        self.bought_price == 0.0:
                     self.data.strategy.iat[i] = True
-                    bought_price = self.data.close.iloc[i]
-                    self.data.buy_price.iat[i] = bought_price
+                    self.bought_price = self.data.close.iloc[i]
+                    self.data.buy_price.iat[i] = self.bought_price
                     self.data.risk.iat[i] = self.data.IKS_26.iloc[i]
-                    self.data.reward.iat[i] = (3 * bought_price) - (2 * self.data.risk.iloc[i])
+                    self.data.reward.iat[i] = (3 * self.bought_price) - (2 * self.data.risk.iloc[i])
 
         return self.data
 
