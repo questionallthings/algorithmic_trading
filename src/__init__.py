@@ -1,4 +1,5 @@
 # Imports
+import concurrent.futures
 from concurrent import futures
 from datetime import datetime, timedelta, date
 import mplfinance as mpf
@@ -22,7 +23,7 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[2],
+arguments = {'run': run_options[0],
              'strategy': strategy_options[0],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
@@ -114,16 +115,16 @@ def test_strategy(connection, stock, strategy):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:]))
         elif re.match('^SUPERT', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['SUPERT_7_3.0'][-mpf_display_count:]))
-        #elif each_column == 'buy_price':
-        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
-        #                                                type='scatter',
-        #                                                markersize=200,
-        #                                                marker='^'))
-        #elif each_column == 'sell_price':
-        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['sell_price'][-mpf_display_count:] * 1.01,
-        #                                                type='scatter',
-        #                                                markersize=200,
-        #                                                marker='v'))
+        elif each_column == 'buy_price':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
+                                                        type='scatter',
+                                                        markersize=200,
+                                                        marker='^'))
+        elif each_column == 'sell_price':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['sell_price'][-mpf_display_count:] * 1.01,
+                                                        type='scatter',
+                                                        markersize=200,
+                                                        marker='v'))
         elif re.match('^STOCHRSI', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
         elif each_column == 'backtest_profit':
@@ -171,11 +172,12 @@ def test_strategy(connection, stock, strategy):
 
 def run_strategy(strategy):
     with futures.ProcessPoolExecutor(max_workers=2) as indicator_executor:
-        for each_symbol, stock_list_results in zip(stock_data,
-                                                   indicator_executor.map(getattr(strategies, strategy),
-                                                                          stock_data.items(),
-                                                                          repeat(arguments))):
-            stock_data[each_symbol].data = stock_list_results
+        strategies_futures = {indicator_executor.submit(
+            getattr(strategies.Strategy((each_symbol, stock_data[each_symbol]), arguments),
+                    strategy)): each_symbol for each_symbol in stock_data}
+        for future in concurrent.futures.as_completed(strategies_futures):
+            stock_symbol = strategies_futures[future]
+            stock_data[stock_symbol].data = future.result()
     if arguments['run'] == 'live':
         for each_symbol in list(stock_data.keys()):
             if not stock_data[each_symbol].data.strategy.iloc[-1] or \
