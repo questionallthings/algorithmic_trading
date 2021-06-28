@@ -257,18 +257,20 @@ if __name__ == "__main__":
                 order_status = False
                 if each_stock not in orders:
                     for date_range in range(1, 4):
-                        if date.timetuple(datetime.today() - timedelta(days=date_range)).tm_wday not in [5, 6] and \
-                                (stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() -
-                                                                                             timedelta(days=date_range),
-                                                                                             '%Y-%m-%d')] > 0):
-                            order_status = order(stock_data[each_stock].data.loc[datetime.strftime(
-                                datetime.today() - timedelta(days=date_range), '%Y-%m-%d')], each_stock)
+                        if datetime.strftime(datetime.today() -
+                                             timedelta(days=date_range), '%Y-%m-%d') in stock_data[each_stock].data:
+                            if date.timetuple(datetime.today() - timedelta(days=date_range)).tm_wday not in [5, 6] and \
+                                    (stock_data[each_stock].data.buy_price.loc[
+                                         datetime.strftime(datetime.today() - timedelta(days=date_range),
+                                                           '%Y-%m-%d')] > 0):
+                                order_status = order(stock_data[each_stock].data.loc[datetime.strftime(
+                                    datetime.today() - timedelta(days=date_range), '%Y-%m-%d')], each_stock)
                 elif each_stock in orders:
                     order_status = True
                 if not order_status:
                     del stock_data[each_stock]
             print(f'{datetime.now()} :: Monitoring from stream {len(stock_data)} stock(s).')
-            alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
-            alpaca_socket_run.alpaca_socket()
+            #alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
+            #lpaca_socket_run.alpaca_socket()
 
     print(f'Program took {datetime.now() - start_time} to complete.')
