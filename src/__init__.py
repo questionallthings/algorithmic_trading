@@ -16,14 +16,14 @@ import db_manager
 import alpaca_socket_manager
 
 
-run_options = ['live', 'backtest', 'strategy']
+run_options = ['live', 'backtest', 'strat_dev']
 strategy_options = ['stochastic_supertrend', 'rsi_stochastic_200ema', 'ichimoku']
 period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[0],
-             'strategy': strategy_options[2],
+arguments = {'run': run_options[2],
+             'strategy': strategy_options[0],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
@@ -37,7 +37,7 @@ stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
-strategy_test_stock = 'ABEV'  # HPQ is used due to highest amount of data.
+strategy_test_stock = 'HPQ'  # HPQ is used due to highest amount of data.
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
@@ -104,7 +104,8 @@ def test_strategy(connection, stock, strategy):
     sql_df.drop(columns='symbol', inplace=True)
     stock_df = Stock(data=sql_df)
     stock_df.set_data()
-    stock_df.data = getattr(strategies, strategy)((stock, stock_df), arguments)
+    strats = strategies.Strategy((stock, stock_df), arguments)
+    stock_df.data = getattr(strats, strategy)()
     mpf_display_count = 200
     print(stock_df.data.tail(20))
     add_plot_indicators = []
@@ -224,30 +225,28 @@ if __name__ == "__main__":
                                     port=int(database.memsql_port),
                                     database=database.database_name,
                                     cursorclass=pymysql.cursors.DictCursor)
-    if arguments['run'] == 'strategy':
+    if arguments['run'] == 'strat_dev':
         test_strategy(connection=memsql_server,
                       stock=strategy_test_stock,
-                      strategy=arguments['strategy'])  # HPQ is used due to largest set
+                      strategy=arguments['strategy'])
     else:
-        with memsql_server.cursor() as db_query:
-            db_query.execute('SELECT * FROM stock_info')
-            memsql_stock_list_result = db_query.fetchall()
-        for each_result in memsql_stock_list_result:
-            stock_data[each_result['symbol']] = Stock(info=each_result)
-        if arguments['quote_type'] != 'ALL':
-            for each_stock, value in list(stock_data.items()):
-                if stock_data[each_stock].info['quoteType'] != arguments['quote_type']:
-                    del stock_data[each_stock]
-        print(f'{datetime.now()} :: Running {arguments["run"]}.')
-        import_filter_stocks(memsql_server)
-        print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stock(s).')
-        run_strategy(arguments['strategy'])
-        print(f'{datetime.now()} :: Strategy \'{arguments["strategy"]}\' filtered list down to '
-              f'{len(stock_data)} stock(s).')
         if arguments['run'] == 'backtest':
             for each_stock in stock_data:
                 run_backtest(stock_data[each_stock].data)
         elif arguments['run'] == 'live':
+            with memsql_server.cursor() as db_query:
+                db_query.execute('SELECT * FROM stock_info')
+                memsql_stock_list_result = db_query.fetchall()
+            if arguments['quote_type'] != 'ALL':
+                for each_result in memsql_stock_list_result:
+                    if each_result['quoteType'] == arguments['quote_type']:
+                        stock_data[each_result['symbol']] = Stock(info=each_result)
+            print(f'{datetime.now()} :: Running {arguments["run"]}.')
+            import_filter_stocks(memsql_server)
+            print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stock(s).')
+            run_strategy(arguments['strategy'])
+            print(f'{datetime.now()} :: Strategy \'{arguments["strategy"]}\' filtered list down to '
+                  f'{len(stock_data)} stock(s).')
             orders = []
             current_orders = trade_api.list_orders()
             for each_order in current_orders:
