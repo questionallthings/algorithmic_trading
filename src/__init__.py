@@ -1,6 +1,6 @@
 # Imports
 from concurrent import futures
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import mplfinance as mpf
 from itertools import repeat
 import math
@@ -16,18 +16,6 @@ import db_manager
 import alpaca_socket_manager
 
 
-stock_data = {}
-stock_files_directory = 'stocks/'
-backtest_results_directory = 'backtest_results/'
-trade_api = alpaca_trade_api.REST()
-account = trade_api.get_account()
-strategy_test_stock = 'HPQ'
-
-pd.set_option('max_columns', 999)
-pd.set_option('max_colwidth', 999)
-pd.set_option('max_rows', 999)
-pd.set_option('display.expand_frame_repr', False)
-
 run_options = ['live', 'backtest', 'strategy']
 strategy_options = ['stochastic_supertrend', 'rsi_stochastic_200ema', 'ichimoku']
 period_options = ['1mo', '1y', 'max']
@@ -35,14 +23,26 @@ timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
 arguments = {'run': run_options[0],
+             'strategy': strategy_options[2],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
-             'strategy': strategy_options[2],
+             'quote_type': type_options[1],
              'close_min': 1,
              'close_max': 200,
              'avg_30_volume': 1000000,
-             'quote_type': type_options[1],
              'trade_cash_risk': 100}
+
+stock_data = {}
+stock_files_directory = 'stocks/'
+backtest_results_directory = 'backtest_results/'
+trade_api = alpaca_trade_api.REST()
+account = trade_api.get_account()
+strategy_test_stock = 'ABEV'  # HPQ is used due to highest amount of data.
+
+pd.set_option('max_columns', 999)
+pd.set_option('max_colwidth', 999)
+pd.set_option('max_rows', 999)
+pd.set_option('display.expand_frame_repr', False)
 
 
 class Stock:
@@ -106,23 +106,23 @@ def test_strategy(connection, stock, strategy):
     stock_df.set_data()
     stock_df.data = getattr(strategies, strategy)((stock, stock_df), arguments)
     mpf_display_count = 200
-    print(stock_df.data.tail(80))
+    print(stock_df.data.tail(20))
     add_plot_indicators = []
     for each_column in stock_df.data.columns:
         if re.match('^EMA', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:]))
         elif re.match('^SUPERT', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['SUPERT_7_3.0'][-mpf_display_count:]))
-        elif each_column == 'buy_price':
-            add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
-                                                        type='scatter',
-                                                        markersize=200,
-                                                        marker='^'))
-        elif each_column == 'sell_price':
-            add_plot_indicators.append(mpf.make_addplot(stock_df.data['sell_price'][-mpf_display_count:] * 1.01,
-                                                        type='scatter',
-                                                        markersize=200,
-                                                        marker='v'))
+        #elif each_column == 'buy_price':
+        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['buy_price'][-mpf_display_count:] * .99,
+        #                                                type='scatter',
+        #                                                markersize=200,
+        #                                                marker='^'))
+        #elif each_column == 'sell_price':
+        #    add_plot_indicators.append(mpf.make_addplot(stock_df.data['sell_price'][-mpf_display_count:] * 1.01,
+        #                                                type='scatter',
+        #                                                markersize=200,
+        #                                                marker='v'))
         elif re.match('^STOCHRSI', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_df.data[each_column][-mpf_display_count:], panel=2))
         elif each_column == 'backtest_profit':
@@ -140,18 +140,32 @@ def test_strategy(connection, stock, strategy):
                                                         color='y', width=0.5, alpha=0.5))
             add_plot_indicators.append(mpf.make_addplot(stock_df.data['ISB_26'][-mpf_display_count:],
                                                         color='purple', width=0.5, alpha=0.5))
+        elif each_column == 'pivots':
+            add_plot_indicators.append(mpf.make_addplot(stock_df.data['pivots'][-mpf_display_count:] * 1.05,
+                                                        type='scatter',
+                                                        markersize=200,
+                                                        marker='v'))
     mpf_colors = mpf.make_marketcolors(up='g', down='r', volume='in', edge='k')
     mpf_style = mpf.make_mpf_style(marketcolors=mpf_colors)
-    mpf.plot(data=stock_df.data[-mpf_display_count:],
-             style=mpf_style,
-             fill_between={'y1': stock_df.data['ISA_9'][-mpf_display_count:].values,
-                           'y2': stock_df.data['ISB_26'][-mpf_display_count:].values,
-                           'alpha': 0.25},
-             type='candle',
-             addplot=add_plot_indicators,
-             volume=True,
-             warn_too_much_data=1000000000,
-             title=f'{stock}')
+    if strategy == strategy_options[2]:
+        mpf.plot(data=stock_df.data[-mpf_display_count:],
+                 style=mpf_style,
+                 fill_between={'y1': stock_df.data['ISA_9'][-mpf_display_count:].values,
+                               'y2': stock_df.data['ISB_26'][-mpf_display_count:].values,
+                               'alpha': 0.25},
+                 type='candle',
+                 addplot=add_plot_indicators,
+                 volume=True,
+                 warn_too_much_data=1000000000,
+                 title=f'{stock}')
+    else:
+        mpf.plot(data=stock_df.data[-mpf_display_count:],
+                 style=mpf_style,
+                 type='candle',
+                 addplot=add_plot_indicators,
+                 volume=True,
+                 warn_too_much_data=1000000000,
+                 title=f'{stock}')
 
 
 def run_strategy(strategy):
@@ -185,6 +199,7 @@ def order(stock_data_order, symbol):
                                                take_profit=dict(limit_price=stock_data_order.reward),
                                                stop_loss=dict(stop_price=stock_data_order.risk,
                                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
+        # '''
         if order_results.status == 'accepted':
             status = True
             print({'symbol': symbol,
@@ -193,6 +208,7 @@ def order(stock_data_order, symbol):
                    'risk': round(stock_data_order.buy_price - stock_data_order.risk, 4),
                    'reward': round(stock_data_order.reward - stock_data_order.buy_price, 4),
                    'volume': stock_data_order.volume})
+        # '''
 
     return status
 
@@ -238,18 +254,19 @@ if __name__ == "__main__":
                 orders.append(each_order.symbol)
             for each_stock in list(stock_data.keys()):
                 order_status = False
-                if (each_stock not in orders) and \
-                        (stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() -
-                                                                                     timedelta(days=1),
-                                                                                     '%Y-%m-%d')] > 0):
-                    order_status = order(stock_data[each_stock].data.loc[datetime.strftime(datetime.today() -
-                                                                                           timedelta(days=1),
-                                                                                           '%Y-%m-%d')], each_stock)
+                if each_stock not in orders:
+                    for date_range in range(1, 4):
+                        if date.timetuple(datetime.today() - timedelta(days=date_range)).tm_wday not in [5, 6] and \
+                                (stock_data[each_stock].data.buy_price.loc[datetime.strftime(datetime.today() -
+                                                                                             timedelta(days=date_range),
+                                                                                             '%Y-%m-%d')] > 0):
+                            order_status = order(stock_data[each_stock].data.loc[datetime.strftime(
+                                datetime.today() - timedelta(days=date_range), '%Y-%m-%d')], each_stock)
                 elif each_stock in orders:
                     order_status = True
                 if not order_status:
                     del stock_data[each_stock]
-            print(f'Monitoring from stream {len(stock_data)} stock(s).')
+            print(f'{datetime.now()} :: Monitoring from stream {len(stock_data)} stock(s).')
             alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
             alpaca_socket_run.alpaca_socket()
 

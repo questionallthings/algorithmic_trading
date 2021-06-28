@@ -6,13 +6,33 @@ import pandas_ta as ta
 import numpy as np
 
 
+# MAYBE IMPLEMENT THIS AS A CLASS??? #
+
+
+def pivots(stock_data, period=10):
+    stock_data['pivots'] = np.nan
+    for i in stock_data.index[6:len(stock_data) - 6]:
+        if stock_data.pivots.loc[i - 5 : i + 5] == np.nan:
+            pass
+        else:
+            continue
+
+    return stock_data
+
+
+def divergence(stock_data):
+    stock_data = pivots(stock_data)
+
+    return stock_data
+
+
 def stochastic_supertrend(stock, arguments):
     bought_price = 0.0
     stock[1].data.ta.ema(length=200, append=True)
-    if arguments.run == 'live' and stock[1].data.EMA_200.iloc[-1] > stock[1].data.close.iloc[-1]:
+    if arguments['run'] == 'live' and stock[1].data.EMA_200.iloc[-1] > stock[1].data.close.iloc[-1]:
         return stock[1].data
     stock[1].data.ta.supertrend(append=True)
-    if arguments.run == 'live' and stock[1].data['SUPERTd_7_3.0'].iloc[-1] < 1:
+    if arguments['run'] == 'live' and stock[1].data['SUPERTd_7_3.0'].iloc[-1] < 1:
         return stock[1].data
     stock[1].data.ta.stochrsi(append=True)
     for i in range(-len(stock[1].data) + 300, 0):
@@ -82,7 +102,7 @@ def stochastic_supertrend(stock, arguments):
 
 
 def rsi_stochastic_200ema(stock, arguments):
-    pass
+    stock[1].data = divergence(stock[1].data)
     '''
     long
     close above 200 ema
@@ -93,6 +113,8 @@ def rsi_stochastic_200ema(stock, arguments):
     risk is nearest swing low
     reward is 2x risk
     '''
+
+    return stock[1].data
 
 
 def ichimoku(stock, arguments):
