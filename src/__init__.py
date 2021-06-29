@@ -27,7 +27,7 @@ arguments = {'run': run_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
              'close_min': 1,
-             'close_max': 4,
+             'close_max': 200,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
 
@@ -36,7 +36,7 @@ stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
-development_stock_test = 'HPQ'  # HPQ is used due to highest amount of data.
+development_stock_test = 'NIO'  # HPQ is used due to highest amount of data.
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)

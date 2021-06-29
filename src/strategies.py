@@ -5,10 +5,6 @@
 import pandas_ta as ta
 import numpy as np
 
-# ALL TIME FRAMES STRATEGIES
-
-# DAY TIME FRAME STRATEGIES
-
 
 def stochastic_supertrend(stock_data, arguments):
     bought_price = 0.0
@@ -116,7 +112,8 @@ def ichimoku(stock_data, arguments):
                 stock_data[1].data.strategy.iat[i] = True
                 bought_price = stock_data[1].data.close.iloc[i]
                 stock_data[1].data.buy_price.iat[i] = bought_price
-                stock_data[1].data.risk.iat[i] = stock_data[1].data.IKS_26.iloc[i]
+                stock_data[1].data.risk.iat[i] = max(stock_data[1].data.IKS_26.iloc[i],
+                                                     (min(stock_data[1].data.low.iloc[i - 5:i - 1])))
                 stock_data[1].data.reward.iat[i] = (3 * bought_price) - (2 * stock_data[1].data.risk.iloc[i])
 
     return stock_data[1].data

@@ -14,7 +14,7 @@ def test_strategy(sql_df, symbol, stock_data, arguments):
     stock_data.set_data()
     stock_data.data = getattr(strategies, arguments['strategy'])((symbol, stock_data), arguments)
     mpf_display_count = 200
-    print(stock_data.data.tail(20))
+    print(stock_data.data.tail(40))
     add_plot_indicators = []
     for each_column in stock_data.data.columns:
         if re.match('^EMA', each_column):
