@@ -36,7 +36,7 @@ stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
-development_stock_test = 'HPQ'  # HPQ is used due to highest amount of data.
+development_stock_test = 'GME'  # HPQ is used due to highest amount of data.
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
@@ -52,7 +52,7 @@ class Stock:
 
     def set_data(self):
         self.data['strategy'] = False
-        self.data['backtest_profit'] = 0.0
+        self.data['backtest_profit_percentage'] = 0.0
         self.data['buy_price'] = np.nan
         self.data['sell_price'] = np.nan
         self.data['risk'] = 0.0

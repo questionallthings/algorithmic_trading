@@ -33,7 +33,7 @@ def test_strategy(sql_df, symbol, stock_data, arguments):
                                                         marker='v'))
         elif re.match('^STOCHRSI', each_column):
             add_plot_indicators.append(mpf.make_addplot(stock_data.data[each_column][-mpf_display_count:], panel=2))
-        elif each_column == 'backtest_profit':
+        elif each_column == 'backtest_profit_percentage':
             add_plot_indicators.append(mpf.make_addplot(stock_data.data[each_column][-mpf_display_count:], panel=2))
         elif each_column == 'ATRr_14':
             add_plot_indicators.append(mpf.make_addplot(stock_data.data[each_column][-mpf_display_count:], panel=3))
