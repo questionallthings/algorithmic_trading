@@ -5,9 +5,8 @@ import strategies
 import pandas as pd
 
 
-def test_strategy(connection, symbol, stock_data, arguments):
+def test_strategy(sql_df, symbol, stock_data, arguments):
     print(f'{datetime.now()} :: Importing test stock data.')
-    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol=\'{symbol}\'', connection)
     sql_df.set_index(pd.to_datetime(sql_df.date), inplace=True)
     sql_df.sort_index(inplace=True)
     sql_df.drop(columns='symbol', inplace=True)

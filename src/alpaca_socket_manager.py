@@ -1,7 +1,6 @@
 import os
 import json
 import websocket
-from datetime import datetime
 import logging
 
 

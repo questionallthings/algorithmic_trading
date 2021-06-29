@@ -15,11 +15,6 @@ import alpaca_socket_manager
 import development
 import backtest
 
-logging.basicConfig(format='%(asctime)s :: %(levelname)s - %(message)s',
-                    datefmt='%Y-%m-%dT%H:%M:%S',
-                    level=logging.INFO)
-logging.info('Started logging')
-
 run_options = ['development', 'backtest', 'live']
 strategy_options = ['stochastic_supertrend', 'rsi_stochastic_200ema', 'ichimoku']
 period_options = ['1mo', '1y', 'max']
@@ -35,8 +30,6 @@ arguments = {'run': run_options[2],
              'close_max': 200,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
-
-logging.info(f'Using the following arugments: {arguments}')
 
 stock_data = {}
 stock_files_directory = 'stocks/'
@@ -66,22 +59,9 @@ class Stock:
         self.data['reward'] = 0.0
 
 
-def import_filter_stocks(connection):
+def import_filter_stocks(filter_df):
     logging.info(f'Importing stock data.')
-    stock_list = []
-    with connection.cursor() as filter_query:
-        filter_query.execute(f'SELECT symbol FROM daily_bars '
-                             f'WHERE date BETWEEN '
-                             f'\'{datetime.strftime(datetime.today() - timedelta(days=30), "%Y-%m-%d")}\' '
-                             f'AND \'{datetime.strftime(datetime.today() - timedelta(days=1), "%Y-%m-%d")}\' '
-                             f'AND close BETWEEN {arguments["close_min"]} AND {arguments["close_max"]} '
-                             f'GROUP BY symbol HAVING AVG(volume) > {arguments["avg_30_volume"]}')
-        filter_query_results = filter_query.fetchall()
-    for filter_stock in filter_query_results:
-        if filter_stock['symbol'] in stock_data:
-            stock_list.append(filter_stock['symbol'])
-    sql_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}', connection)
-    sql_grouped_df = list(sql_df.groupby('symbol'))
+    sql_grouped_df = list(filter_df.groupby('symbol'))
     for sql_group_stock in sql_grouped_df:
         if len(sql_group_stock[1]) > 400:
             stock_data[sql_group_stock[0]].data = sql_group_stock[1]
@@ -125,6 +105,7 @@ def order(stock_data_order, symbol):
                                                take_profit=dict(limit_price=stock_data_order.reward),
                                                stop_loss=dict(stop_price=stock_data_order.risk,
                                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
+        logging.info(order_results)
         # '''
         if order_results.status == 'accepted':
             status = True
@@ -140,36 +121,61 @@ def order(stock_data_order, symbol):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format='%(asctime)s :: %(levelname)s - %(message)s',
+                        datefmt='%Y-%m-%dT%H:%M:%S',
+                        level=logging.INFO)
+    logging.info('Started logging')
+    logging.info(f'Using the following arguments: {arguments}')
     start_time = datetime.now()
     logging.info('Started main function')
     database = db_manager.Database()
-    memsql_server = pymysql.connect(host=database.memsql_host,
-                                    user=database.memsql_user,
-                                    password=database.memsql_password,
-                                    port=int(database.memsql_port),
-                                    database=database.database_name,
-                                    cursorclass=pymysql.cursors.DictCursor)
+    with pymysql.connect(host=database.memsql_host,
+                         user=database.memsql_user,
+                         password=database.memsql_password,
+                         port=int(database.memsql_port),
+                         database=database.database_name,
+                         cursorclass=pymysql.cursors.DictCursor) as memsql_connection:
+        if arguments['run'] == 'development':
+            logging.info('Querying memsql for development data')
+            development_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol=\'{development_stock_test}\'',
+                                               memsql_connection)
+        else:
+            logging.info('Querying memsql for stock info data')
+            with memsql_connection.cursor() as memsql_query:
+                memsql_query.execute('SELECT * FROM stock_info')
+                memsql_stock_info_results = memsql_query.fetchall()
+            logging.info('Querying memsql for stock daily data')
+            with memsql_connection.cursor() as filter_query:
+                if arguments['quote_type'] != 'ALL':
+                    for each_result in memsql_stock_info_results:
+                        if each_result['quoteType'] == arguments['quote_type']:
+                            stock_data[each_result['symbol']] = Stock(info=each_result)
+                stock_list = []
+                filter_query.execute(f'SELECT symbol FROM daily_bars '
+                                     f'WHERE date BETWEEN '
+                                     f'\'{datetime.strftime(datetime.today() - timedelta(days=30), "%Y-%m-%d")}\' '
+                                     f'AND \'{datetime.strftime(datetime.today() - timedelta(days=1), "%Y-%m-%d")}\' '
+                                     f'AND close BETWEEN {arguments["close_min"]} AND {arguments["close_max"]} '
+                                     f'GROUP BY symbol HAVING AVG(volume) > {arguments["avg_30_volume"]}')
+                filter_query_results = filter_query.fetchall()
+                for filter_stock in filter_query_results:
+                    if filter_stock['symbol'] in stock_data:
+                        stock_list.append(filter_stock['symbol'])
+                filter_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}',
+                                              memsql_connection)
     if arguments['run'] == 'development':
-        development.test_strategy(connection=memsql_server,
+        development.test_strategy(sql_df=development_df,
                                   symbol=development_stock_test,
                                   stock_data=Stock(),
                                   arguments=arguments)
     else:
-        with memsql_server.cursor() as db_query:
-            db_query.execute('SELECT * FROM stock_info')
-            memsql_stock_list_result = db_query.fetchall()
-        if arguments['quote_type'] != 'ALL':
-            for each_result in memsql_stock_list_result:
-                if each_result['quoteType'] == arguments['quote_type']:
-                    stock_data[each_result['symbol']] = Stock(info=each_result)
-        import_filter_stocks(memsql_server)
+        import_filter_stocks(filter_df)
         logging.info(f'Filtered down to {len(stock_data)} stock(s).')
         if arguments['run'] == 'backtest':
             backtest.run_backtest(stock_data=stock_data,
                                   arguments=arguments)
         else:
             run_strategy(arguments['strategy'])
-            logging.info(f'Strategy \'{arguments["strategy"]}\' filtered list down to {len(stock_data)} stock(s).')
             orders = []
             current_orders = trade_api.list_orders()
             for each_order in current_orders:
@@ -191,7 +197,7 @@ if __name__ == "__main__":
                 if not order_status:
                     del stock_data[each_stock]
             logging.info(f'Monitoring from stream {len(stock_data)} stock(s).')
-            alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
-            alpaca_socket_run.alpaca_socket()
+            #alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
+            #alpaca_socket_run.alpaca_socket()
 
     logging.info(f'Program took {datetime.now() - start_time} to complete.')
