@@ -25,7 +25,7 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[1],
+arguments = {'run': run_options[2],
              'strategy': strategy_options[0],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
@@ -93,13 +93,11 @@ def import_filter_stocks(connection):
 
 
 def run_strategy(strategy):
-    with futures.ProcessPoolExecutor(max_workers=2) as indicator_executor:
-        strategies_futures = {indicator_executor.submit(
-            getattr(strategies.Strategy((each_symbol, stock_data[each_symbol]), arguments),
-                    strategy)): each_symbol for each_symbol in stock_data}
-        for future in concurrent.futures.as_completed(strategies_futures):
-            stock_symbol = strategies_futures[future]
-            stock_data[stock_symbol].data = future.result()
+    with futures.ProcessPoolExecutor() as indicator_executor:
+        for each_symbol, stock_data_results in zip(stock_data, indicator_executor.map(getattr(strategies, strategy),
+                                                                                      stock_data.items(),
+                                                                                      repeat(arguments))):
+            stock_data[each_symbol].data = stock_data_results
     if arguments['run'] == 'live':
         for each_symbol in list(stock_data.keys()):
             if not stock_data[each_symbol].data.strategy.iloc[-1] or \
