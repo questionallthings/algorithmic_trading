@@ -16,6 +16,7 @@ import strategies
 import db_manager
 import alpaca_socket_manager
 import development
+import backtest
 
 
 run_options = ['development', 'backtest', 'live']
@@ -24,7 +25,7 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[0],
+arguments = {'run': run_options[1],
              'strategy': strategy_options[0],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
@@ -91,13 +92,6 @@ def import_filter_stocks(connection):
             del(stock_data[each_key])
 
 
-def run_backtest(strategy_stock_data):
-    print(f'{datetime.now()} :: Saving backtest results.')
-    strategy_stock_data.to_csv(path_or_buf=f'backtest_results/{strategy_stock_data.symbol.iloc[-1]}_backtest.csv',
-                               na_rep='n/a',
-                               index=False)
-
-
 def run_strategy(strategy):
     with futures.ProcessPoolExecutor(max_workers=2) as indicator_executor:
         strategies_futures = {indicator_executor.submit(
@@ -160,9 +154,6 @@ if __name__ == "__main__":
                                   symbol=development_stock_test,
                                   stock_data=Stock(),
                                   arguments=arguments)
-    elif arguments['run'] == 'backtest':
-        for each_stock in stock_data:
-            run_backtest(stock_data[each_stock].data)
     else:
         with memsql_server.cursor() as db_query:
             db_query.execute('SELECT * FROM stock_info')
@@ -174,31 +165,35 @@ if __name__ == "__main__":
         print(f'{datetime.now()} :: Running {arguments["run"]}.')
         import_filter_stocks(memsql_server)
         print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stock(s).')
-        run_strategy(arguments['strategy'])
-        print(f'{datetime.now()} :: Strategy \'{arguments["strategy"]}\' filtered list down to '
-              f'{len(stock_data)} stock(s).')
-        orders = []
-        current_orders = trade_api.list_orders()
-        for each_order in current_orders:
-            orders.append(each_order.symbol)
-        for each_stock in list(stock_data.keys()):
-            order_status = False
-            if each_stock not in orders:
-                for date_range in range(1, 4):
-                    if datetime.strftime(datetime.today() -
-                                         timedelta(days=date_range), '%Y-%m-%d') in stock_data[each_stock].data:
-                        if date.timetuple(datetime.today() - timedelta(days=date_range)).tm_wday not in [5, 6] and \
-                                (stock_data[each_stock].data.buy_price.loc[
-                                     datetime.strftime(datetime.today() - timedelta(days=date_range),
-                                                       '%Y-%m-%d')] > 0):
-                            order_status = order(stock_data[each_stock].data.loc[datetime.strftime(
-                                datetime.today() - timedelta(days=date_range), '%Y-%m-%d')], each_stock)
-            elif each_stock in orders:
-                order_status = True
-            if not order_status:
-                del stock_data[each_stock]
-        print(f'{datetime.now()} :: Monitoring from stream {len(stock_data)} stock(s).')
-        #alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
-        #lpaca_socket_run.alpaca_socket()
+        if arguments['run'] == 'backtest':
+            backtest.run_backtest(stock_data=stock_data,
+                                  arguments=arguments)
+        else:
+            run_strategy(arguments['strategy'])
+            print(f'{datetime.now()} :: Strategy \'{arguments["strategy"]}\' filtered list down to '
+                  f'{len(stock_data)} stock(s).')
+            orders = []
+            current_orders = trade_api.list_orders()
+            for each_order in current_orders:
+                orders.append(each_order.symbol)
+            for each_stock in list(stock_data.keys()):
+                order_status = False
+                if each_stock not in orders:
+                    for date_range in range(1, 4):
+                        if datetime.strftime(datetime.today() -
+                                             timedelta(days=date_range), '%Y-%m-%d') in stock_data[each_stock].data:
+                            if date.timetuple(datetime.today() - timedelta(days=date_range)).tm_wday not in [5, 6] and \
+                                    (stock_data[each_stock].data.buy_price.loc[
+                                         datetime.strftime(datetime.today() - timedelta(days=date_range),
+                                                           '%Y-%m-%d')] > 0):
+                                order_status = order(stock_data[each_stock].data.loc[datetime.strftime(
+                                    datetime.today() - timedelta(days=date_range), '%Y-%m-%d')], each_stock)
+                elif each_stock in orders:
+                    order_status = True
+                if not order_status:
+                    del stock_data[each_stock]
+            print(f'{datetime.now()} :: Monitoring from stream {len(stock_data)} stock(s).')
+            #alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
+            #lpaca_socket_run.alpaca_socket()
 
     print(f'Program took {datetime.now() - start_time} to complete.')
