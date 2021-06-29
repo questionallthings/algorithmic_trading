@@ -27,7 +27,7 @@ arguments = {'run': run_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
              'close_min': 1,
-             'close_max': 200,
+             'close_max': 4,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
 
@@ -59,9 +59,9 @@ class Stock:
         self.data['reward'] = 0.0
 
 
-def import_filter_stocks(filter_df):
+def import_filter_stocks(filter_data):
     logging.info(f'Importing stock data.')
-    sql_grouped_df = list(filter_df.groupby('symbol'))
+    sql_grouped_df = list(filter_data.groupby('symbol'))
     for sql_group_stock in sql_grouped_df:
         if len(sql_group_stock[1]) > 400:
             stock_data[sql_group_stock[0]].data = sql_group_stock[1]
@@ -76,6 +76,7 @@ def import_filter_stocks(filter_df):
 
 
 def run_strategy(strategy):
+    logging.info(f'Running {strategy}')
     with futures.ProcessPoolExecutor() as indicator_executor:
         for each_symbol, stock_data_results in zip(stock_data, indicator_executor.map(getattr(strategies, strategy),
                                                                                       stock_data.items(),
@@ -87,6 +88,7 @@ def run_strategy(strategy):
                     stock_data[each_symbol].data.risk.iloc[-1] == 0.0 or \
                     stock_data[each_symbol].data.reward.iloc[-1] == 0.0:
                 del stock_data[each_symbol]
+    logging.info(f'Initial strategy run filters down to {len(stock_data)} stock(s)')
 
 
 def order(stock_data_order, symbol):
@@ -100,12 +102,12 @@ def order(stock_data_order, symbol):
                                                qty=math.floor(arguments['trade_cash_risk'] /
                                                               (stock_data_order.buy_price -
                                                                stock_data_order.risk)),
-                                               time_in_force='gtc',
+                                               time_in_force='day',
                                                order_class='bracket',
                                                take_profit=dict(limit_price=stock_data_order.reward),
                                                stop_loss=dict(stop_price=stock_data_order.risk,
                                                               limit_price=str(round(stock_data_order.risk * .99, 2))))
-        logging.info(order_results)
+        logging.info(f'{symbol} : Order {order_results.status}')
         # '''
         if order_results.status == 'accepted':
             status = True
@@ -116,6 +118,8 @@ def order(stock_data_order, symbol):
                           'reward': round(stock_data_order.reward - stock_data_order.buy_price, 4),
                           'volume': stock_data_order.volume})
         # '''
+    else:
+        logging.info(f'{symbol} : Last trade price not within range')
 
     return status
 
@@ -175,29 +179,53 @@ if __name__ == "__main__":
             backtest.run_backtest(stock_data=stock_data,
                                   arguments=arguments)
         else:
+            logging.info(f'Getting Alpaca Account')
+            alpaca_account = trade_api.get_account()
+            logging.info(f'Getting Alpaca Positions')
+            alpaca_positions = trade_api.list_positions()
+            current_positions = []
+            for each_position in alpaca_positions:
+                current_positions.append(each_position.symbol)
+            logging.info(f'Current Positions:\n{current_positions}')
+            logging.info(f'Getting Alpaca Orders')
+            alpaca_orders = trade_api.list_orders()
+            current_orders = []
+            for each_order in alpaca_orders:
+                current_orders.append(each_order.symbol)
+            logging.info(f'Current Positions:\n{current_orders}')
             run_strategy(arguments['strategy'])
-            orders = []
-            current_orders = trade_api.list_orders()
-            for each_order in current_orders:
-                orders.append(each_order.symbol)
+            pending_orders = {}
+            date_offset = 1
+            if date.timetuple(datetime.today()).tm_wday == 0:
+                date_offset += 2
             for each_stock in list(stock_data.keys()):
-                order_status = False
-                if each_stock not in orders:
-                    for date_range in range(1, 4):
-                        if datetime.strftime(datetime.today() -
-                                             timedelta(days=date_range), '%Y-%m-%d') in stock_data[each_stock].data:
-                            if date.timetuple(datetime.today() - timedelta(days=date_range)).tm_wday not in [5, 6] and \
-                                    (stock_data[each_stock].data.buy_price.loc[
-                                         datetime.strftime(datetime.today() - timedelta(days=date_range),
-                                                           '%Y-%m-%d')] > 0):
-                                order_status = order(stock_data[each_stock].data.loc[datetime.strftime(
-                                    datetime.today() - timedelta(days=date_range), '%Y-%m-%d')], each_stock)
-                elif each_stock in orders:
-                    order_status = True
+                if datetime.strftime(datetime.today() -
+                                     timedelta(days=date_offset), '%Y-%m-%d') in stock_data[each_stock].data.index:
+                    pending_orders[each_stock] = stock_data[each_stock].data.loc[datetime.strftime(
+                        datetime.today() - timedelta(days=date_offset), '%Y-%m-%d')]
+                if np.isnan(pending_orders[each_stock].buy_price):
+                    del pending_orders[each_stock]
+            logging.info(f'Reviewing {len(pending_orders)} stock order(s)')
+            for each_position in current_positions:
+                if each_position in pending_orders:
+                    del pending_orders[each_position]
+            for each_order in current_orders:
+                if each_order in pending_orders:
+                    del pending_orders[each_order]
+            logging.info(f'Attempting {len(pending_orders)} order(s)')
+            for each_order in list(pending_orders):
+                order_status = order(pending_orders[each_order], each_order)
                 if not order_status:
-                    del stock_data[each_stock]
-            logging.info(f'Monitoring from stream {len(stock_data)} stock(s).')
-            #alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
-            #alpaca_socket_run.alpaca_socket()
+                    del pending_orders[each_order]
+            monitor_stocks = []
+            for each_order in pending_orders:
+                monitor_stocks.append(each_order)
+            for each_position in current_positions:
+                monitor_stocks.append(each_position)
+            for each_order in current_orders:
+                monitor_stocks.append(each_order)
+            logging.info(f'Monitoring from stream {len(monitor_stocks)} stock(s).')
+            alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
+            alpaca_socket_run.alpaca_socket()
 
     logging.info(f'Program took {datetime.now() - start_time} to complete.')
