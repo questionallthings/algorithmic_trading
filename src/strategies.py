@@ -83,6 +83,7 @@ def ichimoku(stock_data, arguments):
     ichimoku_df = stock_data[1].data.ta.ichimoku(append=True)
     stock_data[1].data = stock_data[1].data.append(ichimoku_df[1])
     stock_data[1].data.drop(columns='date', inplace=True)
+    stock_data[1].data.ta.atr(append=True)
     for i in range(-len(stock_data[1].data) + 300, -26):
         stock_data[1].data.backtest_profit.iat[i] = stock_data[1].data.backtest_profit.iloc[i - 1]
         if bought_price != 0.0:
@@ -102,6 +103,7 @@ def ichimoku(stock_data, arguments):
                 bought_price = 0.0
         else:
             if (stock_data[1].data.close.iloc[i] > stock_data[1].data.ISA_9.iloc[i]) and \
+                    (stock_data[1].data.close.iloc[i] > stock_data[1].data.open.iloc[i]) and \
                     (stock_data[1].data.close.iloc[i] > stock_data[1].data.ISB_26.iloc[i]) and \
                     (stock_data[1].data.ISA_9.iloc[i + 26] > stock_data[1].data.ISB_26.iloc[i + 26]) and \
                     (stock_data[1].data.ICS_26.iloc[i - 26] > stock_data[1].data.ISA_9.iloc[i - 26]) and \
@@ -114,7 +116,7 @@ def ichimoku(stock_data, arguments):
                 stock_data[1].data.buy_price.iat[i] = bought_price
                 stock_data[1].data.risk.iat[i] = max(stock_data[1].data.IKS_26.iloc[i],
                                                      (min(stock_data[1].data.low.iloc[i - 5:i - 1])))
-                stock_data[1].data.reward.iat[i] = (3 * bought_price) - (2 * stock_data[1].data.risk.iloc[i])
+                stock_data[1].data.reward.iat[i] = (2.5 * bought_price) - (1.5 * stock_data[1].data.risk.iloc[i])
 
     return stock_data[1].data
 

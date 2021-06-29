@@ -21,7 +21,7 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[2],
+arguments = {'run': run_options[0],
              'strategy': strategy_options[2],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
@@ -36,7 +36,7 @@ stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
-development_stock_test = 'NIO'  # HPQ is used due to highest amount of data.
+development_stock_test = 'HPQ'  # HPQ is used due to highest amount of data.
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
@@ -192,7 +192,7 @@ if __name__ == "__main__":
             current_orders = []
             for each_order in alpaca_orders:
                 current_orders.append(each_order.symbol)
-            logging.info(f'Current Positions:\n{current_orders}')
+            logging.info(f'Current Orders:\n{current_orders}')
             run_strategy(arguments['strategy'])
             pending_orders = {}
             date_offset = 1
@@ -225,7 +225,7 @@ if __name__ == "__main__":
             for each_order in current_orders:
                 monitor_stocks.append(each_order)
             logging.info(f'Monitoring from stream {len(monitor_stocks)} stock(s).')
-            alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
+            alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(monitor_stocks, stock_data)
             alpaca_socket_run.alpaca_socket()
 
     logging.info(f'Program took {datetime.now() - start_time} to complete.')

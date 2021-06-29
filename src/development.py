@@ -13,7 +13,7 @@ def test_strategy(sql_df, symbol, stock_data, arguments):
     stock_data.data = sql_df
     stock_data.set_data()
     stock_data.data = getattr(strategies, arguments['strategy'])((symbol, stock_data), arguments)
-    mpf_display_count = 200
+    mpf_display_count = 0
     print(stock_data.data.tail(40))
     add_plot_indicators = []
     for each_column in stock_data.data.columns:
@@ -35,6 +35,8 @@ def test_strategy(sql_df, symbol, stock_data, arguments):
             add_plot_indicators.append(mpf.make_addplot(stock_data.data[each_column][-mpf_display_count:], panel=2))
         elif each_column == 'backtest_profit':
             add_plot_indicators.append(mpf.make_addplot(stock_data.data[each_column][-mpf_display_count:], panel=2))
+        elif each_column == 'ATRr_14':
+            add_plot_indicators.append(mpf.make_addplot(stock_data.data[each_column][-mpf_display_count:], panel=3))
         elif each_column == 'ISA_9':
             stock_data.data['ISA_9'].fillna(0.0, inplace=True)
             stock_data.data['ISB_26'].fillna(0.0, inplace=True)

@@ -5,7 +5,7 @@ import logging
 
 
 class AlpacaSocket:
-    def __init__(self, stock_data):
+    def __init__(self, monitoring, stock_data):
         self.socket_auth = {'action': 'auth',
                             'key': os.environ['APCA_API_KEY_ID'],
                             'secret': os.environ['APCA_API_SECRET_KEY']}
@@ -16,6 +16,7 @@ class AlpacaSocket:
                                  'statuses': [],
                                  'lulds': [],
                                  'bars': ['*']}
+        self.monitoring = monitoring
         self.stock_data = stock_data
 
     def on_message(self, ws, message):
@@ -27,7 +28,7 @@ class AlpacaSocket:
                 elif each_message['msg'] == 'authenticated':
                     ws.send(json.dumps(self.socket_subscribe))
             elif each_message['T'] == 'b':
-                if each_message['S'] in self.stock_data:
+                if each_message['S'] in self.monitoring:
                     logging.info(each_message)
 
     def on_error(self, ws, error):
