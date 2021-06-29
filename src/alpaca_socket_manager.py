@@ -29,7 +29,7 @@ class AlpacaSocket:
                     ws.send(json.dumps(self.socket_subscribe))
             elif each_message['T'] == 'b':
                 if each_message['S'] in self.stock_data:
-                    print(each_message)
+                    logging.info(each_message)
 
     def on_error(self, ws, error):
         logging.error(error)
