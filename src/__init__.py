@@ -1,11 +1,8 @@
-# Imports
-import concurrent.futures
 from concurrent import futures
 from datetime import datetime, timedelta, date
-import mplfinance as mpf
 from itertools import repeat
 import math
-import re
+import logging
 
 import alpaca_trade_api
 import numpy as np
@@ -18,6 +15,10 @@ import alpaca_socket_manager
 import development
 import backtest
 
+logging.basicConfig(format='%(asctime)s :: %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%dT%H:%M:%S',
+                    level=logging.INFO)
+logging.info('Started logging')
 
 run_options = ['development', 'backtest', 'live']
 strategy_options = ['stochastic_supertrend', 'rsi_stochastic_200ema', 'ichimoku']
@@ -26,7 +27,7 @@ timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
 arguments = {'run': run_options[2],
-             'strategy': strategy_options[0],
+             'strategy': strategy_options[2],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
@@ -34,6 +35,8 @@ arguments = {'run': run_options[2],
              'close_max': 200,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
+
+logging.info(f'Using the following arugments: {arguments}')
 
 stock_data = {}
 stock_files_directory = 'stocks/'
@@ -64,7 +67,7 @@ class Stock:
 
 
 def import_filter_stocks(connection):
-    print(f'{datetime.now()} :: Importing stock data.')
+    logging.info(f'Importing stock data.')
     stock_list = []
     with connection.cursor() as filter_query:
         filter_query.execute(f'SELECT symbol FROM daily_bars '
@@ -125,12 +128,12 @@ def order(stock_data_order, symbol):
         # '''
         if order_results.status == 'accepted':
             status = True
-            print({'symbol': symbol,
-                   'quantity': order_results.qty,
-                   'price': round(stock_data_order.buy_price, 4),
-                   'risk': round(stock_data_order.buy_price - stock_data_order.risk, 4),
-                   'reward': round(stock_data_order.reward - stock_data_order.buy_price, 4),
-                   'volume': stock_data_order.volume})
+            logging.info({'symbol': symbol,
+                          'quantity': order_results.qty,
+                          'price': round(stock_data_order.buy_price, 4),
+                          'risk': round(stock_data_order.buy_price - stock_data_order.risk, 4),
+                          'reward': round(stock_data_order.reward - stock_data_order.buy_price, 4),
+                          'volume': stock_data_order.volume})
         # '''
 
     return status
@@ -138,8 +141,7 @@ def order(stock_data_order, symbol):
 
 if __name__ == "__main__":
     start_time = datetime.now()
-    print(f'{datetime.now()} :: Starting')
-    print(f'{datetime.now()} :: Using the following arguments: {arguments}.')
+    logging.info('Started main function')
     database = db_manager.Database()
     memsql_server = pymysql.connect(host=database.memsql_host,
                                     user=database.memsql_user,
@@ -160,16 +162,14 @@ if __name__ == "__main__":
             for each_result in memsql_stock_list_result:
                 if each_result['quoteType'] == arguments['quote_type']:
                     stock_data[each_result['symbol']] = Stock(info=each_result)
-        print(f'{datetime.now()} :: Running {arguments["run"]}.')
         import_filter_stocks(memsql_server)
-        print(f'{datetime.now()} :: Filtered down to {len(stock_data)} stock(s).')
+        logging.info(f'Filtered down to {len(stock_data)} stock(s).')
         if arguments['run'] == 'backtest':
             backtest.run_backtest(stock_data=stock_data,
                                   arguments=arguments)
         else:
             run_strategy(arguments['strategy'])
-            print(f'{datetime.now()} :: Strategy \'{arguments["strategy"]}\' filtered list down to '
-                  f'{len(stock_data)} stock(s).')
+            logging.info(f'Strategy \'{arguments["strategy"]}\' filtered list down to {len(stock_data)} stock(s).')
             orders = []
             current_orders = trade_api.list_orders()
             for each_order in current_orders:
@@ -190,8 +190,8 @@ if __name__ == "__main__":
                     order_status = True
                 if not order_status:
                     del stock_data[each_stock]
-            print(f'{datetime.now()} :: Monitoring from stream {len(stock_data)} stock(s).')
-            #alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
-            #lpaca_socket_run.alpaca_socket()
+            logging.info(f'Monitoring from stream {len(stock_data)} stock(s).')
+            alpaca_socket_run = alpaca_socket_manager.AlpacaSocket(stock_data)
+            alpaca_socket_run.alpaca_socket()
 
-    print(f'Program took {datetime.now() - start_time} to complete.')
+    logging.info(f'Program took {datetime.now() - start_time} to complete.')

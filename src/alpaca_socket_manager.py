@@ -2,6 +2,7 @@ import os
 import json
 import websocket
 from datetime import datetime
+import logging
 
 
 class AlpacaSocket:
@@ -31,13 +32,13 @@ class AlpacaSocket:
                     print(each_message)
 
     def on_error(self, ws, error):
-        print(f'{datetime.now()} :: {error}')
+        logging.error(error)
 
     def on_close(self, ws, close_status_code, close_msg):
-        print(f'{datetime.now()} :: Socket Closed')
+        logging.info('Socket Closed')
 
     def on_open(self, ws):
-        print(f'{datetime.now()} :: Socket Opened')
+        logging.info('Socket Opened')
 
     def alpaca_socket(self):
         websocket.enableTrace(True)
