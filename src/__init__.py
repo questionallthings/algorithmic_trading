@@ -36,7 +36,7 @@ stock_files_directory = 'stocks/'
 backtest_results_directory = 'backtest_results/'
 trade_api = alpaca_trade_api.REST()
 account = trade_api.get_account()
-development_stock_test = 'GME'  # HPQ is used due to highest amount of data.
+development_stock_test = 'HPQ'  # HPQ is used due to highest amount of data.
 
 pd.set_option('max_columns', 999)
 pd.set_option('max_colwidth', 999)
