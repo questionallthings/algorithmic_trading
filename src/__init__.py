@@ -21,7 +21,7 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[0],
+arguments = {'run': run_options[1],
              'strategy': strategy_options[2],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
@@ -57,6 +57,8 @@ class Stock:
         self.data['sell_price'] = np.nan
         self.data['risk'] = 0.0
         self.data['reward'] = 0.0
+        self.data['win'] = False
+        self.data['loss'] = False
 
 
 def import_filter_stocks(filter_data):

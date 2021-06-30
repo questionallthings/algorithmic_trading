@@ -21,6 +21,7 @@ def stochastic_supertrend(stock_data, arguments):
             stock_data[1].data.risk.iat[i] = stock_data[1].data.risk.iloc[i - 1]
             stock_data[1].data.reward.iat[i] = stock_data[1].data.reward.iloc[i - 1]
             if stock_data[1].data.low.iloc[i] < stock_data[1].data.risk.iloc[i]:
+                stock_data[1].data.loss.iat[i] = True
                 stock_data[1].data.sell_price.iat[i] = stock_data[1].data.risk.iloc[i]
                 stock_data[1].data.backtest_profit_percentage.iat[i] -= ((bought_price /
                                                                           stock_data[1].data.sell_price.iloc[i])
@@ -29,6 +30,7 @@ def stochastic_supertrend(stock_data, arguments):
                 stock_data[1].data.reward.iat[i] = 0.0
                 bought_price = 0.0
             elif stock_data[1].data.high.iloc[i] > stock_data[1].data.reward.iloc[i]:
+                stock_data[1].data.win.iat[i] = True
                 stock_data[1].data.sell_price.iat[i] = stock_data[1].data.reward.iloc[i]
                 stock_data[1].data.backtest_profit_percentage.iat[i] += ((stock_data[1].data.sell_price.iloc[i] /
                                                                           bought_price) - 1) * 100
@@ -36,6 +38,7 @@ def stochastic_supertrend(stock_data, arguments):
                 stock_data[1].data.reward.iat[i] = 0.0
                 bought_price = 0.0
             elif stock_data[1].data['SUPERTd_7_3.0'].iloc[i] < 1:
+                stock_data[1].data.loss.iat[i] = True
                 stock_data[1].data.sell_price.iat[i] = stock_data[1].data.close.iloc[i]
                 stock_data[1].data.backtest_profit_percentage.iat[i] -= ((bought_price /
                                                                           stock_data[1].data.sell_price.iloc[i])
@@ -95,6 +98,7 @@ def ichimoku(stock_data, arguments):
             stock_data[1].data.risk.iat[i] = stock_data[1].data.risk.iloc[i - 1]
             stock_data[1].data.reward.iat[i] = stock_data[1].data.reward.iloc[i - 1]
             if stock_data[1].data.low.iloc[i] < stock_data[1].data.risk.iloc[i]:
+                stock_data[1].data.loss.iat[i] = True
                 stock_data[1].data.sell_price.iat[i] = stock_data[1].data.risk.iloc[i]
                 stock_data[1].data.backtest_profit_percentage.iat[i] -= ((bought_price /
                                                                           stock_data[1].data.sell_price.iloc[i])
@@ -103,6 +107,7 @@ def ichimoku(stock_data, arguments):
                 stock_data[1].data.reward.iat[i] = 0.0
                 bought_price = 0.0
             elif stock_data[1].data.high.iloc[i] > stock_data[1].data.reward.iloc[i]:
+                stock_data[1].data.win.iat[i] = True
                 stock_data[1].data.sell_price.iat[i] = stock_data[1].data.reward.iloc[i]
                 stock_data[1].data.backtest_profit_percentage.iat[i] += ((stock_data[1].data.sell_price.iloc[i] /
                                                                           bought_price) - 1) * 100
