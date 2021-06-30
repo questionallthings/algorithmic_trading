@@ -59,7 +59,8 @@ def stochastic_supertrend(stock_data, arguments):
                 bought_price = stock_data[1].data.close.iloc[i]
                 stock_data[1].data.buy_price.iat[i] = bought_price
                 stock_data[1].data.risk.iat[i] = stock_data[1].data.risk.iloc[i - 1]
-                stock_data[1].data.reward.iat[i] = (2.5 * bought_price) - (1.5 * stock_data[1].data.risk.iloc[i])
+                stock_data[1].data.reward.iat[i] = ((1 + arguments['reward']) * bought_price) - \
+                                                   (arguments['reward'] * stock_data[1].data.risk.iloc[i])
             # Cross Up w/o Strategy
             elif (stock_data[1].data.STOCHRSIk_14_14_3_3.iloc[i] - stock_data[1].data.STOCHRSId_14_14_3_3.iloc[i] >
                   0.0 >
@@ -129,7 +130,8 @@ def ichimoku(stock_data, arguments):
                 stock_data[1].data.buy_price.iat[i] = bought_price
                 stock_data[1].data.risk.iat[i] = max(stock_data[1].data.IKS_26.iloc[i],
                                                      (min(stock_data[1].data.low.iloc[i - 5:i - 1])))
-                stock_data[1].data.reward.iat[i] = (2.5 * bought_price) - (1.5 * stock_data[1].data.risk.iloc[i])
+                stock_data[1].data.reward.iat[i] = ((1 + arguments['reward']) * bought_price) - \
+                                                   (arguments['reward'] * stock_data[1].data.risk.iloc[i])
 
     return stock_data[1].data
 
