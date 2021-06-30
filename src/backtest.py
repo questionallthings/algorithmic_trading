@@ -27,9 +27,9 @@ def run_backtest(stock_data, arguments):
             losses += stock_data[each].data.value_counts(subset="loss")[True]
     print(f'Stock Count: {len(stock_data)}')
     print(f'Win(s): {wins}')
-    print(f'Average Win(s): {wins / len(stock_data)}')
+    print(f'Average Win(s): {round(wins / len(stock_data), 2)}')
     print(f'Loss(es): {losses}')
-    print(f'Average Loss(es): {losses / len(stock_data)}')
+    print(f'Average Loss(es): {round(losses / len(stock_data), 2)}')
     print(f'Win/Loss Ratio: {round(wins / losses, 2)}')
     print(f'Profit Percentage: {profits}')
-    print(f'Average Percentage: {profits / len(stock_data)}')
+    print(f'Average Percentage: {round(profits / len(stock_data), 2)}')
