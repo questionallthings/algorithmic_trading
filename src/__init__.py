@@ -21,13 +21,13 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[1],
+arguments = {'run': run_options[0],
              'strategy': strategy_options[2],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
              'close_min': 1,
-             'close_max': 200,
+             'close_max': 2,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
 
@@ -143,8 +143,11 @@ if __name__ == "__main__":
                          cursorclass=pymysql.cursors.DictCursor) as memsql_connection:
         if arguments['run'] == 'development':
             logging.info('Querying memsql for development data')
-            development_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol=\'{development_stock_test}\'',
-                                               memsql_connection)
+            stock_data[development_stock_test] = Stock()
+            stock_data[development_stock_test].data = pd.read_sql_query(
+                f'SELECT * FROM daily_bars WHERE symbol=\'{development_stock_test}\'',
+                memsql_connection)
+            stock_data[development_stock_test].set_data()
         else:
             logging.info('Querying memsql for stock info data')
             with memsql_connection.cursor() as memsql_query:
@@ -170,9 +173,8 @@ if __name__ == "__main__":
                 filter_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}',
                                               memsql_connection)
     if arguments['run'] == 'development':
-        development.test_strategy(sql_df=development_df,
+        development.test_strategy(stock_data=stock_data[development_stock_test],
                                   symbol=development_stock_test,
-                                  stock_data=Stock(),
                                   arguments=arguments)
     else:
         import_filter_stocks(filter_df)

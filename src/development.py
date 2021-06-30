@@ -5,13 +5,11 @@ import strategies
 import pandas as pd
 
 
-def test_strategy(sql_df, symbol, stock_data, arguments):
+def test_strategy(stock_data, symbol, arguments):
     print(f'{datetime.now()} :: Importing test stock data.')
-    sql_df.set_index(pd.to_datetime(sql_df.date), inplace=True)
-    sql_df.sort_index(inplace=True)
-    sql_df.drop(columns='symbol', inplace=True)
-    stock_data.data = sql_df
-    stock_data.set_data()
+    stock_data.data.set_index(pd.to_datetime(stock_data.data.date), inplace=True)
+    stock_data.data.sort_index(inplace=True)
+    stock_data.data.drop(columns='symbol', inplace=True)
     stock_data.data = getattr(strategies, arguments['strategy'])((symbol, stock_data), arguments)
     mpf_display_count = 0
     print(stock_data.data.tail(40))
