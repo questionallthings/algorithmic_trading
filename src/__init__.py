@@ -1,6 +1,4 @@
-from concurrent import futures
 from datetime import datetime, timedelta, date
-from itertools import repeat
 import math
 import logging
 
@@ -21,14 +19,14 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[2],
+arguments = {'run': run_options[0],
              'strategy': strategy_options[0],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
              'reward': 3,
-             'close_min': 5,
-             'close_max': 10,
+             'close_min': 1,
+             'close_max': 200,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
 
@@ -158,9 +156,7 @@ if __name__ == "__main__":
                 filter_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}',
                                               memsql_connection)
     if arguments['run'] == 'development':
-        development.test_strategy(stock_data=stock_data[development_stock_test],
-                                  symbol=development_stock_test,
-                                  arguments=arguments)
+        development.test_strategy(stock_data=stock_data, arguments=arguments)
     else:
         import_filter_stocks(filter_df)
         logging.info(f'Filtered down to {len(stock_data)} stock(s).')
@@ -182,8 +178,7 @@ if __name__ == "__main__":
             for each_order in alpaca_orders:
                 current_orders.append(each_order.symbol)
             logging.info(f'Current Orders:\n{current_orders}')
-
-            strategies.run_strategy(arguments['strategy'], stock_data, arguments['reward'])  # DELETE THIS LINE AFTER DONE TESTING
+            strategies.run_strategy(arguments['strategy'], stock_data, arguments['reward'])
             if arguments['run'] == 'live':
                 for each_symbol in list(stock_data.keys()):
                     if not stock_data[each_symbol].data.strategy.iloc[-1] or \
