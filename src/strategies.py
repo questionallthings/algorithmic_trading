@@ -4,16 +4,15 @@
 
 import pandas_ta as ta
 import numpy as np
+import logging
+from itertools import repeat
+from concurrent import futures
 
 
-def stochastic_supertrend(stock_data, arguments):
+def stochastic_supertrend(stock_data, reward):
     bought_price = 0.0
     stock_data[1].data.ta.ema(length=200, append=True)
-    if arguments['run'] == 'live' and stock_data[1].data.EMA_200.iloc[-1] > stock_data[1].data.close.iloc[-1]:
-        return stock_data[1].data
     stock_data[1].data.ta.supertrend(append=True)
-    if arguments['run'] == 'live' and stock_data[1].data['SUPERTd_7_3.0'].iloc[-1] < 1:
-        return stock_data[1].data
     stock_data[1].data.ta.stochrsi(append=True)
     for i in range(-len(stock_data[1].data) + 300, 0):
         stock_data[1].data.backtest_profit_percentage.iat[i] = stock_data[1].data.backtest_profit_percentage.iloc[i - 1]
@@ -59,8 +58,8 @@ def stochastic_supertrend(stock_data, arguments):
                 bought_price = stock_data[1].data.close.iloc[i]
                 stock_data[1].data.buy_price.iat[i] = bought_price
                 stock_data[1].data.risk.iat[i] = stock_data[1].data.risk.iloc[i - 1]
-                stock_data[1].data.reward.iat[i] = ((1 + arguments['reward']) * bought_price) - \
-                                                   (arguments['reward'] * stock_data[1].data.risk.iloc[i])
+                stock_data[1].data.reward.iat[i] = ((1 + reward) * bought_price) - \
+                                                   (reward * stock_data[1].data.risk.iloc[i])
             # Cross Up w/o Strategy
             elif (stock_data[1].data.STOCHRSIk_14_14_3_3.iloc[i] - stock_data[1].data.STOCHRSId_14_14_3_3.iloc[i] >
                   0.0 >
@@ -87,7 +86,7 @@ def stochastic_supertrend(stock_data, arguments):
     return stock_data[1].data
 
 
-def ichimoku(stock_data, arguments):
+def ichimoku(stock_data, reward):
     bought_price = 0.0
     ichimoku_df = stock_data[1].data.ta.ichimoku(append=True)
     stock_data[1].data = stock_data[1].data.append(ichimoku_df[1])
@@ -130,13 +129,13 @@ def ichimoku(stock_data, arguments):
                 stock_data[1].data.buy_price.iat[i] = bought_price
                 stock_data[1].data.risk.iat[i] = max(stock_data[1].data.IKS_26.iloc[i],
                                                      (min(stock_data[1].data.low.iloc[i - 5:i - 1])))
-                stock_data[1].data.reward.iat[i] = ((1 + arguments['reward']) * bought_price) - \
-                                                   (arguments['reward'] * stock_data[1].data.risk.iloc[i])
+                stock_data[1].data.reward.iat[i] = ((1 + reward) * bought_price) - \
+                                                   (reward * stock_data[1].data.risk.iloc[i])
 
     return stock_data[1].data
 
 
-def rsi_stochastic_200ema(stock, arguments):
+def rsi_stochastic_200ema(stock_data, reward):
     pass
     '''
     long
@@ -148,3 +147,13 @@ def rsi_stochastic_200ema(stock, arguments):
     risk is nearest swing low
     reward is 2x risk
     '''
+
+
+def run_strategy(strategy, stock_data, reward):
+    logging.info(f'Running {strategy}')
+    with futures.ProcessPoolExecutor() as indicator_executor:
+        for each_symbol, stock_data_results in zip(stock_data, indicator_executor.map(eval(strategy),
+                                                                                      stock_data.items(),
+                                                                                      repeat(reward))):
+            stock_data[each_symbol].data = stock_data_results
+    logging.info(f'Initial strategy run filters down to {len(stock_data)} stock(s)')

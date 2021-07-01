@@ -16,19 +16,19 @@ import development
 import backtest
 
 run_options = ['development', 'backtest', 'live']
-strategy_options = ['stochastic_supertrend', 'rsi_stochastic_200ema', 'ichimoku']
+strategy_options = ['stochastic_supertrend', 'ichimoku']
 period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[0],
-             'strategy': strategy_options[2],
+arguments = {'run': run_options[2],
+             'strategy': strategy_options[0],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
              'reward': 3,
-             'close_min': 10,
-             'close_max': 200,
+             'close_min': 5,
+             'close_max': 10,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
 
@@ -76,22 +76,6 @@ def import_filter_stocks(filter_data):
     for each_key in list(stock_data):
         if stock_data[each_key].data is None or len(stock_data[each_key].data) < 400:
             del(stock_data[each_key])
-
-
-def run_strategy(strategy):
-    logging.info(f'Running {strategy}')
-    with futures.ProcessPoolExecutor() as indicator_executor:
-        for each_symbol, stock_data_results in zip(stock_data, indicator_executor.map(getattr(strategies, strategy),
-                                                                                      stock_data.items(),
-                                                                                      repeat(arguments))):
-            stock_data[each_symbol].data = stock_data_results
-    if arguments['run'] == 'live':
-        for each_symbol in list(stock_data.keys()):
-            if not stock_data[each_symbol].data.strategy.iloc[-1] or \
-                    stock_data[each_symbol].data.risk.iloc[-1] == 0.0 or \
-                    stock_data[each_symbol].data.reward.iloc[-1] == 0.0:
-                del stock_data[each_symbol]
-    logging.info(f'Initial strategy run filters down to {len(stock_data)} stock(s)')
 
 
 def order(stock_data_order, symbol):
@@ -198,7 +182,14 @@ if __name__ == "__main__":
             for each_order in alpaca_orders:
                 current_orders.append(each_order.symbol)
             logging.info(f'Current Orders:\n{current_orders}')
-            run_strategy(arguments['strategy'])
+
+            strategies.run_strategy(arguments['strategy'], stock_data, arguments['reward'])  # DELETE THIS LINE AFTER DONE TESTING
+            if arguments['run'] == 'live':
+                for each_symbol in list(stock_data.keys()):
+                    if not stock_data[each_symbol].data.strategy.iloc[-1] or \
+                            stock_data[each_symbol].data.risk.iloc[-1] == 0.0 or \
+                            stock_data[each_symbol].data.reward.iloc[-1] == 0.0:
+                        del stock_data[each_symbol]
             pending_orders = {}
             date_offset = 1
             if date.timetuple(datetime.today()).tm_wday == 0:
