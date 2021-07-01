@@ -11,7 +11,7 @@ def test_strategy(stock_data, symbol, arguments):
     stock_data.data.sort_index(inplace=True)
     stock_data.data.drop(columns='symbol', inplace=True)
     stock_data.data = getattr(strategies, arguments['strategy'])((symbol, stock_data), arguments)
-    mpf_display_count = 0
+    mpf_display_count = 100
     print(stock_data.data.tail(40))
     add_plot_indicators = []
     for each_column in stock_data.data.columns:

@@ -21,7 +21,7 @@ period_options = ['1mo', '1y', 'max']
 timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[2],
+arguments = {'run': run_options[0],
              'strategy': strategy_options[2],
              'period': period_options[2],
              'timeframe': timeframe_options[2],

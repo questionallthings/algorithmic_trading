@@ -5,7 +5,6 @@ from datetime import datetime
 from concurrent import futures
 import alpaca_trade_api
 import yahooquery as yq
-import logging
 
 
 class Database:
@@ -37,7 +36,7 @@ class Database:
                         else:
                             query_text += f'\"{stock_info_data[stock][each_column]}", '
                     query_text += f'{stock_info_data[stock][columns[-1]]})'
-                    logging.info(query_text)
+                    print(query_text)
                     sql_server = pymysql.connect(host=self.memsql_host,
                                                  user=self.memsql_user,
                                                  password=self.memsql_password,
@@ -48,7 +47,7 @@ class Database:
                         stock_info_post.execute(f'{query_text}')
                     sql_server.commit()
         except pymysql.err.IntegrityError as error:
-            logging.error(error)
+            print(error)
 
     def update_daily_bars(self, stock):
         yahoo_query_data = yq.Ticker(stock)
@@ -76,13 +75,13 @@ class Database:
                     else:
                         query_text += f'{daily_stock_data.loc[each_date].loc[each_column]}, '
                 query_text += f'{daily_stock_data.loc[each_date].loc[columns[-1]]})'
-                logging.info(query_text)
+                print(query_text)
                 with sql_server.cursor() as daily_bars_post:
                     daily_bars_post.execute(f'{query_text}')
                     results = daily_bars_post.fetchall()
-                    logging.info(results)
+                    print(results)
             except Exception as error:
-                logging.error(error)
+                print(error)
         sql_server.commit()
 
     def update_minute_bars(self, stock):
@@ -111,13 +110,13 @@ class Database:
                     else:
                         query_text += f'{minute_stock_data.loc[each_date].loc[each_column]}, '
                 query_text += f'{minute_stock_data.loc[each_date].loc[columns[-1]]})'
-                logging.info(query_text)
+                print(query_text)
                 with sql_server.cursor() as daily_bars_post:
                     daily_bars_post.execute(f'{query_text}')
                     results = daily_bars_post.fetchall()
-                    logging.info(results)
+                    print(results)
             except Exception as error:
-                logging.error(error)
+                print(error)
         sql_server.commit()
 
 
@@ -160,4 +159,4 @@ if __name__ == '__main__':
     with futures.ThreadPoolExecutor() as daily_executor:
         daily_executor.map(database.update_minute_bars, memsql_stock_info_list)
 
-    logging.info(f'Total time for updating: {datetime.now() - start_time}')
+    print(f'Total time for updating: {datetime.now() - start_time}')
