@@ -5,16 +5,15 @@ import strategies
 import pandas as pd
 
 
-def test_strategy(stock_data, arguments):
+def test_strategy(symbol, stock_data, arguments):
     print(f'{datetime.now()} :: Importing test stock data.')
-    symbol = list(stock_data.items())[0][0]
     stock_data[symbol].data.set_index(pd.to_datetime(stock_data[symbol].data.date), inplace=True)
     stock_data[symbol].data.sort_index(inplace=True)
     stock_data[symbol].data.drop(columns='symbol',
                                  inplace=True)
     strategies.run_strategy(arguments['strategy'], stock_data, arguments['reward'])
-    mpf_display_count = 100
-    print(stock_data[symbol].data.tail(40))
+    mpf_display_count = 0
+    print(stock_data[symbol].data.tail(20))
     add_plot_indicators = []
     for each_column in stock_data[symbol].data.columns:
         if re.match('^EMA', each_column):
@@ -53,11 +52,6 @@ def test_strategy(stock_data, arguments):
                                                         color='y', width=0.5, alpha=0.5))
             add_plot_indicators.append(mpf.make_addplot(stock_data[symbol].data['ISB_26'][-mpf_display_count:],
                                                         color='purple', width=0.5, alpha=0.5))
-        elif each_column == 'pivots':
-            add_plot_indicators.append(mpf.make_addplot(stock_data[symbol].data['pivots'][-mpf_display_count:] * 1.05,
-                                                        type='scatter',
-                                                        markersize=200,
-                                                        marker='v'))
     mpf_colors = mpf.make_marketcolors(up='g', down='r', volume='in', edge='k')
     mpf_style = mpf.make_mpf_style(marketcolors=mpf_colors)
     if arguments['strategy'] == 'ichimoku':

@@ -156,7 +156,8 @@ if __name__ == '__main__':
         daily_executor.map(database.update_daily_bars, memsql_stock_info_list)
 
     # # # UPDATING MINUTE BARS
-    with futures.ThreadPoolExecutor() as daily_executor:
-        daily_executor.map(database.update_minute_bars, memsql_stock_info_list)
+    # Will uncomment this section once I start using strategies that need minute data.
+    #with futures.ThreadPoolExecutor() as minute_executor:
+    #    minute_executor.map(database.update_minute_bars, memsql_stock_info_list)
 
     print(f'Total time for updating: {datetime.now() - start_time}')

@@ -20,13 +20,13 @@ timeframe_options = ['5m', '60m', '1d']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
 arguments = {'run': run_options[0],
-             'strategy': strategy_options[0],
+             'strategy': strategy_options[1],
              'period': period_options[2],
              'timeframe': timeframe_options[2],
              'quote_type': type_options[1],
-             'reward': 3,
+             'reward': 2,
              'close_min': 1,
-             'close_max': 200,
+             'close_max': 2,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
 
@@ -156,7 +156,7 @@ if __name__ == "__main__":
                 filter_df = pd.read_sql_query(f'SELECT * FROM daily_bars WHERE symbol in {tuple(stock_list)}',
                                               memsql_connection)
     if arguments['run'] == 'development':
-        development.test_strategy(stock_data=stock_data, arguments=arguments)
+        development.test_strategy(symbol=development_stock_test,stock_data=stock_data, arguments=arguments)
     else:
         import_filter_stocks(filter_df)
         logging.info(f'Filtered down to {len(stock_data)} stock(s).')
