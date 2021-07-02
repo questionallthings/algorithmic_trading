@@ -3,17 +3,18 @@ import mplfinance as mpf
 import re
 import strategies
 import pandas as pd
+import logging
 
 
 def test_strategy(symbol, stock_data, arguments):
-    print(f'{datetime.now()} :: Importing test stock data.')
+    logging.info(f'{datetime.now()} :: Importing test stock data.')
     stock_data[symbol].data.set_index(pd.to_datetime(stock_data[symbol].data.date), inplace=True)
     stock_data[symbol].data.sort_index(inplace=True)
     stock_data[symbol].data.drop(columns='symbol',
                                  inplace=True)
     strategies.run_strategy(arguments['strategy'], stock_data, arguments['reward'])
     mpf_display_count = 0
-    print(stock_data[symbol].data.tail(20))
+    print(stock_data[symbol].data.tail(40))
     add_plot_indicators = []
     for each_column in stock_data[symbol].data.columns:
         if re.match('^EMA', each_column):

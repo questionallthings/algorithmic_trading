@@ -84,52 +84,45 @@ class Strategy:
             self.data.reward.iat[i] = ((1 + self.reward) * self.bought_price) - \
                                       (self.reward * self.data.risk.iloc[i])
 
-    def iterate_through(self):
-        eval(f'self.{self.strategy}_setup()')
-        for i in range(self.iteration_start, self.iteration_stop):
-            self.data.backtest_profit_percentage.iat[i] = self.data.backtest_profit_percentage.iloc[i - 1]
-            self.data.risk.iat[i] = self.data.risk.iloc[i - 1]
-            self.data.reward.iat[i] = self.data.reward.iloc[i - 1]
-            if self.bought_price != 0.0:
-                if self.data.low.iloc[i] < self.data.risk.iloc[i]:
-                    self.data.loss.iat[i] = True
-                    self.data.sell_price.iat[i] = self.data.risk.iloc[i]
-                    self.data.backtest_profit_percentage.iat[i] -= ((self.bought_price / self.data.sell_price.iloc[i])
-                                                                    - 1) * 100
-                    self.data.risk.iat[i] = 0.0
-                    self.data.reward.iat[i] = 0.0
-                    self.bought_price = 0.0
-                elif self.data.high.iloc[i] > self.data.reward.iloc[i]:
-                    self.data.win.iat[i] = True
-                    self.data.sell_price.iat[i] = self.data.reward.iloc[i]
-                    self.data.backtest_profit_percentage.iat[i] += ((self.data.sell_price.iloc[i] / self.bought_price)
-                                                                    - 1) * 100
-                    self.data.risk.iat[i] = 0.0
-                    self.data.reward.iat[i] = 0.0
-                    self.bought_price = 0.0
-            else:
-                eval(f'self.{self.strategy}_sold(i)')
 
-        return self.data
+def iterate_through(data, reward, strategy):
+    strategy_run = Strategy(data, reward, strategy)
+    eval(f'strategy_run.{strategy}_setup()')
+    for i in range(strategy_run.iteration_start, strategy_run.iteration_stop):
+        strategy_run.data.backtest_profit_percentage.iat[i] = strategy_run.data.backtest_profit_percentage.iloc[i - 1]
+        strategy_run.data.risk.iat[i] = strategy_run.data.risk.iloc[i - 1]
+        strategy_run.data.reward.iat[i] = strategy_run.data.reward.iloc[i - 1]
+        if strategy_run.bought_price != 0.0:
+            if strategy_run.data.low.iloc[i] < strategy_run.data.risk.iloc[i]:
+                strategy_run.data.loss.iat[i] = True
+                strategy_run.data.sell_price.iat[i] = strategy_run.data.risk.iloc[i]
+                strategy_run.data.backtest_profit_percentage.iat[i] -= ((strategy_run.bought_price /
+                                                                         strategy_run.data.sell_price.iloc[i])
+                                                                - 1) * 100
+                strategy_run.data.risk.iat[i] = 0.0
+                strategy_run.data.reward.iat[i] = 0.0
+                strategy_run.bought_price = 0.0
+            elif strategy_run.data.high.iloc[i] > strategy_run.data.reward.iloc[i]:
+                strategy_run.data.win.iat[i] = True
+                strategy_run.data.sell_price.iat[i] = strategy_run.data.reward.iloc[i]
+                strategy_run.data.backtest_profit_percentage.iat[i] += ((strategy_run.data.sell_price.iloc[i] /
+                                                                         strategy_run.bought_price)
+                                                                - 1) * 100
+                strategy_run.data.risk.iat[i] = 0.0
+                strategy_run.data.reward.iat[i] = 0.0
+                strategy_run.bought_price = 0.0
+        else:
+            eval(f'strategy_run.{strategy}_sold(i)')
+
+    return strategy_run.data
 
 
 def run_strategy(strategy, stock_data, reward):
     logging.info(f'Running {strategy}')
     with futures.ProcessPoolExecutor() as indicator_executor:
-        strategy_results = {indicator_executor.submit(Strategy(data, reward, strategy).iterate_through()):
-                            data for data in stock_data.items()}
-        for future in concurrent.futures.as_completed(strategy_results):
-            print(strategy_results[future])
+        for each_stock, strategy_results in zip(stock_data, indicator_executor.map(iterate_through,
+                                                                                   stock_data.items(),
+                                                                                   repeat(reward),
+                                                                                   repeat(strategy))):
+            stock_data[each_stock].data = strategy_results
     logging.info(f'Initial strategy run filters down to {len(stock_data)} stock(s)')
-
-
-'''
-def run_strategy(strategy, stock_data, reward):
-    logging.info(f'Running {strategy}')
-    with futures.ProcessPoolExecutor() as indicator_executor:
-        for each_symbol, stock_data_results in zip(stock_data, indicator_executor.map(
-                getattr(Strategy,
-                        'iterate_through'),stock_data.items(), repeat(reward), repeat(strategy))):
-            stock_data[each_symbol].data = stock_data_results
-    logging.info(f'Initial strategy run filters down to {len(stock_data)} stock(s)')
-'''
