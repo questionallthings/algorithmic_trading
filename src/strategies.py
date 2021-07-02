@@ -1,7 +1,6 @@
 # List of strategies from Trade Pro
 'https://docs.google.com/spreadsheets/d/1LQ7lwnvcB5eacK4PxLXnV1mMEIzSxHzD8IZpP2N1oA8/edit#gid=0'
 # Multitimeframe + MACD not doable because pandas_ta does not provide MTF indicators.
-import concurrent.futures
 
 import pandas_ta as ta
 import numpy as np

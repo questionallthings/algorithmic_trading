@@ -1,7 +1,5 @@
-import pandas
 from itertools import repeat
 from concurrent import futures
-import numpy as np
 import logging
 import strategies
 

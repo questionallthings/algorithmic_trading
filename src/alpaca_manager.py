@@ -2,7 +2,9 @@ import os
 import json
 import websocket
 import logging
+import alpaca_trade_api
 
+trade_api = alpaca_trade_api.REST()
 
 class AlpacaSocket:
     def __init__(self, monitoring, stock_data):
