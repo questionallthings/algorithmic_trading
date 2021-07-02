@@ -15,18 +15,16 @@ import backtest
 
 run_options = ['development', 'backtest', 'live']
 strategy_options = ['stochastic_supertrend', 'ichimoku']
-period_options = ['1mo', '1y', 'max']
-timeframe_options = ['5m', '60m', '1d']
+timeframe_options = ['minute', 'day']
 type_options = ['ALL', 'EQUITY', 'ETF']
 
-arguments = {'run': run_options[0],
+arguments = {'run': run_options[2],
              'strategy': strategy_options[1],
-             'period': period_options[2],
-             'timeframe': timeframe_options[2],
+             'timeframe': timeframe_options[1],
              'quote_type': type_options[1],
              'reward': 2,
              'close_min': 1,
-             'close_max': 2,
+             'close_max': 200,
              'avg_30_volume': 1000000,
              'trade_cash_risk': 100}
 
